@@ -1,0 +1,540 @@
+<root>
+	<org.frankframework.pipes.IncreaseIntegerPipe>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.IncreaseIntegerPipe>
+	<org.frankframework.pipes.CompareIntegerPipe>
+		<type>router</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.CompareIntegerPipe>
+	<org.frankframework.jdbc.JdbcListener>
+		<type>listener</type>
+		<modifier>2</modifier>
+	</org.frankframework.jdbc.JdbcListener>
+	<org.frankframework.senders.DelaySender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.DelaySender>
+	<org.frankframework.pipes.Json2XmlValidator>
+		<type>validator</type>
+		<modifier>7</modifier>
+		<attribute name="outputFormat"/>
+		<attribute name="schema"/>
+		<attribute name="responseRoot"/>
+		<attribute name="schemaLocation"/>
+	</org.frankframework.pipes.Json2XmlValidator>
+	<org.frankframework.testutil.mock.FixedQuerySenderMock>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+		<attribute name="outputFormat"/>
+	</org.frankframework.testutil.mock.FixedQuerySenderMock>
+	<org.frankframework.pipes.ExceptionPipe>
+		<type>errorhandling</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.ExceptionPipe>
+	<org.frankframework.pipes.JsonValidator>
+		<type>validator</type>
+		<modifier>7</modifier>
+		<attribute name="schema"/>
+		<attribute name="responseRoot"/>
+	</org.frankframework.pipes.JsonValidator>
+	<org.frankframework.pipes.DataSonnetPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.pipes.DataSonnetPipe>
+	<org.frankframework.senders.MailSender>
+		<type>endpoint</type>
+		<modifier>3</modifier>
+	</org.frankframework.senders.MailSender>
+	<org.frankframework.jdbc.FixedQuerySender>
+		<type>endpoint</type>
+		<modifier>2</modifier>
+		<attribute name="outputFormat"/>
+	</org.frankframework.jdbc.FixedQuerySender>
+	<org.frankframework.http.RestListener>
+		<type>listener</type>
+		<modifier>0</modifier>
+	</org.frankframework.http.RestListener>
+	<org.frankframework.compression.ZipIteratorPipe>
+		<type>iterator</type>
+		<modifier>7</modifier>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.compression.ZipIteratorPipe>
+	<org.frankframework.pipes.LogContextPipe>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.LogContextPipe>
+	<org.frankframework.pipes.CompareStringPipe>
+		<type>router</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.CompareStringPipe>
+	<org.frankframework.pipes.PutSystemDateInSession>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.PutSystemDateInSession>
+	<org.frankframework.pipes.DomainTransformerPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.DomainTransformerPipe>
+	<org.frankframework.pipes.XsltPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="styleSheetNameSessionKey"/>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.pipes.XsltPipe>
+	<org.frankframework.http.WebServiceListener>
+		<type>listener</type>
+		<modifier>0</modifier>
+	</org.frankframework.http.WebServiceListener>
+	<org.frankframework.pipes.IsUserInRolePipe>
+		<type>router</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.IsUserInRolePipe>
+	<org.frankframework.senders.SenderSeries>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.SenderSeries>
+	<org.frankframework.pipes.PGPPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="action"/>
+	</org.frankframework.pipes.PGPPipe>
+	<org.frankframework.receivers.SlowPushingListener>
+		<type>listener</type>
+		<modifier>7</modifier>
+	</org.frankframework.receivers.SlowPushingListener>
+	<org.frankframework.pipes.ForEachChildElementPipe>
+		<type>iterator</type>
+		<modifier>7</modifier>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.pipes.ForEachChildElementPipe>
+	<org.frankframework.senders.ReconnectSenderWrapper>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.ReconnectSenderWrapper>
+	<org.frankframework.senders.JavascriptSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.JavascriptSender>
+	<org.frankframework.pipes.XmlWellFormedCheckerPipe>
+		<type>validator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.XmlWellFormedCheckerPipe>
+	<org.frankframework.pipes.GetFromSessionPipe>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.GetFromSessionPipe>
+	<org.frankframework.testutil.mock.DirectQuerySenderMock>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+		<attribute name="outputFormat"/>
+	</org.frankframework.testutil.mock.DirectQuerySenderMock>
+	<org.frankframework.pipes.WsdlGeneratorPipe>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.WsdlGeneratorPipe>
+	<org.frankframework.senders.IbisLocalSender>
+		<type>endpoint</type>
+		<modifier>4</modifier>
+	</org.frankframework.senders.IbisLocalSender>
+	<org.frankframework.pipes.WsdlXmlValidator>
+		<type>validator</type>
+		<modifier>7</modifier>
+		<attribute name="wsdl"/>
+		<attribute name="schema"/>
+		<attribute name="outputFormat"/>
+		<attribute name="responseRoot"/>
+		<attribute name="schemaLocation"/>
+	</org.frankframework.pipes.WsdlXmlValidator>
+	<org.frankframework.pipes.XmlSwitch>
+		<type>router</type>
+		<modifier>7</modifier>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.pipes.XmlSwitch>
+	<org.frankframework.jdbc.MessageStoreListener>
+		<type>listener</type>
+		<modifier>2</modifier>
+	</org.frankframework.jdbc.MessageStoreListener>
+	<org.frankframework.management.bus.endpoints.IbisstoreSummaryQuerySender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+		<attribute name="outputFormat"/>
+	</org.frankframework.management.bus.endpoints.IbisstoreSummaryQuerySender>
+	<org.frankframework.http.WebServiceSender>
+		<type>endpoint</type>
+		<modifier>0</modifier>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.http.WebServiceSender>
+	<org.frankframework.jdbc.MessageStoreSender>
+		<type>endpoint</type>
+		<modifier>2</modifier>
+	</org.frankframework.jdbc.MessageStoreSender>
+	<org.frankframework.pipes.HashPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.HashPipe>
+	<org.frankframework.pipes.IsXmlPipe>
+		<type>router</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.IsXmlPipe>
+	<org.frankframework.pipes.FixedResultPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.pipes.FixedResultPipe>
+	<org.frankframework.pipes.SkipPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.SkipPipe>
+	<org.frankframework.senders.XmlValidatorSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.XmlValidatorSender>
+	<org.frankframework.pipes.ReplacerPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.ReplacerPipe>
+	<org.frankframework.pipes.StreamLineIteratorPipe>
+		<type>iterator</type>
+		<modifier>7</modifier>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.pipes.StreamLineIteratorPipe>
+	<org.frankframework.mongodb.MongoDbSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+		<attribute name="action"/>
+		<attribute name="outputFormat"/>
+	</org.frankframework.mongodb.MongoDbSender>
+	<org.frankframework.pipes.Base64Pipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="direction"/>
+	</org.frankframework.pipes.Base64Pipe>
+	<org.frankframework.http.HttpSender>
+		<type>endpoint</type>
+		<modifier>0</modifier>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.http.HttpSender>
+	<org.frankframework.pipes.JsonPathPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.JsonPathPipe>
+	<org.frankframework.senders.JsonXsltSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+		<attribute name="styleSheetNameSessionKey"/>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.senders.JsonXsltSender>
+	<org.frankframework.testdummies.TestDummyListener>
+		<type>listener</type>
+		<modifier>7</modifier>
+	</org.frankframework.testdummies.TestDummyListener>
+	<org.frankframework.jdbc.ResultSetIteratingPipe>
+		<type>iterator</type>
+		<modifier>2</modifier>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.jdbc.ResultSetIteratingPipe>
+	<org.frankframework.jdbc.SimpleJdbcListener>
+		<type>listener</type>
+		<modifier>2</modifier>
+	</org.frankframework.jdbc.SimpleJdbcListener>
+	<org.frankframework.senders.SenderWrapper>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.SenderWrapper>
+	<org.frankframework.pipes.EscapePipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="direction"/>
+	</org.frankframework.pipes.EscapePipe>
+	<org.frankframework.pipes.Text2XmlPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.Text2XmlPipe>
+	<org.frankframework.senders.IbisJavaSender>
+		<type>endpoint</type>
+		<modifier>4</modifier>
+	</org.frankframework.senders.IbisJavaSender>
+	<org.frankframework.pipes.SenderPipe>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.SenderPipe>
+	<org.frankframework.pipes.BytesOutputPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.BytesOutputPipe>
+	<org.frankframework.pipes.GetPrincipalPipe>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.GetPrincipalPipe>
+	<org.frankframework.receivers.MockPushingListener>
+		<type>listener</type>
+		<modifier>7</modifier>
+	</org.frankframework.receivers.MockPushingListener>
+	<org.frankframework.pipes.CrlPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.CrlPipe>
+	<org.frankframework.pipes.JsonXsltPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="styleSheetNameSessionKey"/>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.pipes.JsonXsltPipe>
+	<org.frankframework.compression.ZipWriterSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.compression.ZipWriterSender>
+	<org.frankframework.jdbc.StoredProcedureQuerySender>
+		<type>endpoint</type>
+		<modifier>2</modifier>
+		<attribute name="outputFormat"/>
+	</org.frankframework.jdbc.StoredProcedureQuerySender>
+	<org.frankframework.receivers.FrankListener>
+		<type>listener</type>
+		<modifier>7</modifier>
+	</org.frankframework.receivers.FrankListener>
+	<org.frankframework.pipes.PutInSessionPipe>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.PutInSessionPipe>
+	<org.frankframework.pipes.RegExPipe>
+		<type>router</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.RegExPipe>
+	<org.frankframework.pipes.CounterSwitchPipe>
+		<type>router</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.CounterSwitchPipe>
+	<org.frankframework.pipes.SizePipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.SizePipe>
+	<org.frankframework.cache.RemoveCacheKeyPipe>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.cache.RemoveCacheKeyPipe>
+	<org.frankframework.jdbc.ClobLineIteratingPipe>
+		<type>iterator</type>
+		<modifier>2</modifier>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.jdbc.ClobLineIteratingPipe>
+	<org.frankframework.receivers.JavaListener>
+		<type>listener</type>
+		<modifier>7</modifier>
+	</org.frankframework.receivers.JavaListener>
+	<org.frankframework.receivers.MockPullingListener>
+		<type>listener</type>
+		<modifier>7</modifier>
+	</org.frankframework.receivers.MockPullingListener>
+	<org.frankframework.pipes.ForPipe>
+		<type>iterator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.ForPipe>
+	<org.frankframework.pipes.UUIDGeneratorPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.UUIDGeneratorPipe>
+	<org.frankframework.jdbc.DirectQuerySender>
+		<type>endpoint</type>
+		<modifier>2</modifier>
+		<attribute name="outputFormat"/>
+	</org.frankframework.jdbc.DirectQuerySender>
+	<org.frankframework.jdbc.JdbcTableListener>
+		<type>listener</type>
+		<modifier>2</modifier>
+	</org.frankframework.jdbc.JdbcTableListener>
+	<org.frankframework.jdbc.ResultSet2FileSender>
+		<type>endpoint</type>
+		<modifier>2</modifier>
+		<attribute name="outputFormat"/>
+	</org.frankframework.jdbc.ResultSet2FileSender>
+	<org.frankframework.testdummies.TestDummyPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.testdummies.TestDummyPipe>
+	<org.frankframework.jdbc.BlobLineIteratingPipe>
+		<type>iterator</type>
+		<modifier>2</modifier>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.jdbc.BlobLineIteratingPipe>
+	<org.frankframework.pipes.AsyncSenderWithListenerPipe>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.AsyncSenderWithListenerPipe>
+	<org.frankframework.pipes.JsonWellFormedCheckerPipe>
+		<type>validator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.JsonWellFormedCheckerPipe>
+	<org.frankframework.senders.FixedResultSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.senders.FixedResultSender>
+	<org.frankframework.pipes.PasswordGeneratorPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.PasswordGeneratorPipe>
+	<org.frankframework.senders.XsltSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+		<attribute name="styleSheetNameSessionKey"/>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.senders.XsltSender>
+	<org.frankframework.pipes.IfPipe>
+		<type>router</type>
+		<modifier>7</modifier>
+		<attribute name="xpathExpression"/>
+	</org.frankframework.pipes.IfPipe>
+	<org.frankframework.ldap.LdapSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.ldap.LdapSender>
+	<org.frankframework.pipes.XQueryPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.XQueryPipe>
+	<org.frankframework.http.PushingListenerAdapter>
+		<type>listener</type>
+		<modifier>0</modifier>
+	</org.frankframework.http.PushingListenerAdapter>
+	<org.frankframework.jdbc.JdbcQueryListener>
+		<type>listener</type>
+		<modifier>2</modifier>
+	</org.frankframework.jdbc.JdbcQueryListener>
+	<org.frankframework.senders.SendGridSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.SendGridSender>
+	<org.frankframework.pipes.ChecksumPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.ChecksumPipe>
+	<org.frankframework.monitoring.MessageCapturingEchoSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.monitoring.MessageCapturingEchoSender>
+	<org.frankframework.senders.ShadowSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.ShadowSender>
+	<org.frankframework.pipes.SwitchPipe>
+		<type>router</type>
+		<modifier>7</modifier>
+		<attribute name="xpathExpression"/>
+		<attribute name="styleSheetName"/>
+	</org.frankframework.pipes.SwitchPipe>
+	<org.frankframework.pipes.XmlIf>
+		<type>router</type>
+		<modifier>7</modifier>
+		<attribute name="xpathExpression"/>
+	</org.frankframework.pipes.XmlIf>
+	<org.frankframework.pipes.RemoveFromSessionPipe>
+		<type>session</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.RemoveFromSessionPipe>
+	<org.frankframework.pipes.PasswordHashPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.PasswordHashPipe>
+	<org.frankframework.senders.FrankSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.FrankSender>
+	<org.frankframework.senders.CommandSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.CommandSender>
+	<org.frankframework.pipes.UnzipPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.UnzipPipe>
+	<org.frankframework.receivers.SlowPullingListener>
+		<type>listener</type>
+		<modifier>7</modifier>
+	</org.frankframework.receivers.SlowPullingListener>
+	<org.frankframework.senders.EchoSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.EchoSender>
+	<org.frankframework.pipes.TextSplitterPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.TextSplitterPipe>
+	<org.frankframework.http.rest.ApiListener>
+		<type>listener</type>
+		<modifier>0</modifier>
+	</org.frankframework.http.rest.ApiListener>
+	<org.frankframework.pipes.EchoPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.EchoPipe>
+	<org.frankframework.pipes.SignaturePipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="action"/>
+	</org.frankframework.pipes.SignaturePipe>
+	<org.frankframework.receivers.DummySender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.receivers.DummySender>
+	<org.frankframework.pipes.JsonPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+		<attribute name="direction"/>
+	</org.frankframework.pipes.JsonPipe>
+	<org.frankframework.jdbc.XmlQuerySender>
+		<type>endpoint</type>
+		<modifier>2</modifier>
+		<attribute name="outputFormat"/>
+	</org.frankframework.jdbc.XmlQuerySender>
+	<org.frankframework.soap.SoapValidator>
+		<type>validator</type>
+		<modifier>7</modifier>
+		<attribute name="schema"/>
+		<attribute name="outputFormat"/>
+		<attribute name="responseRoot"/>
+		<attribute name="schemaLocation"/>
+	</org.frankframework.soap.SoapValidator>
+	<org.frankframework.pipes.XmlValidator>
+		<type>validator</type>
+		<modifier>7</modifier>
+		<attribute name="schema"/>
+		<attribute name="responseRoot"/>
+		<attribute name="schemaLocation"/>
+	</org.frankframework.pipes.XmlValidator>
+	<org.frankframework.senders.ReloadSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.ReloadSender>
+	<org.frankframework.senders.ParallelSenders>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.ParallelSenders>
+	<org.frankframework.soap.SoapWrapperPipe>
+		<type>wrapper</type>
+		<modifier>7</modifier>
+		<attribute name="direction"/>
+	</org.frankframework.soap.SoapWrapperPipe>
+	<org.frankframework.senders.LogSender>
+		<type>endpoint</type>
+		<modifier>7</modifier>
+	</org.frankframework.senders.LogSender>
+	<org.frankframework.pipes.CsvParserPipe>
+		<type>translator</type>
+		<modifier>7</modifier>
+	</org.frankframework.pipes.CsvParserPipe>
+</root>

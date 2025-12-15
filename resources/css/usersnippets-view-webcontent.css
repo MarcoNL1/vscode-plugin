@@ -1,0 +1,75 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+.snippetName {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.snippetsPerNameContainer {
+    transition: height 0.5s ease, opacity 0.5s ease;
+}
+
+.snippetCard {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 4px 4px 4px -2px #d8d8d8;
+    background-color: white;
+}
+
+.footerRow {
+    display: grid;
+    align-items: end;
+}
+
+.iconsContainer {
+    text-align: right;
+}
+
+.iconsContainer > i {
+    margin-left: 10px;
+    cursor: pointer;
+    font-size: 20px;
+}
+
+.details {
+    display: grid;
+    grid-template-columns: 30% 70%;
+}
+
+.snippetPrefixContainer,
+.snippetDescriptionContainer,
+.snippetBodyContainer {
+    display: flex;
+    flex-direction: column;
+}
+
+.snippetPrefixContainer {
+    margin-right: 10px;
+}
+
+.snippetPrefix,
+.snippetDescription,
+.snippetBody {
+    width: 100%;
+    padding: 5px;
+    resize: vertical;
+    box-sizing: border-box;
+    resize: none;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #d8d8d8;
+    border-radius: 5px;
+    transition: border 0.2s;
+    field-sizing: content;
+}
+
+.snippetPrefix:not([readonly]):focus,
+.snippetDescription:not([readonly]):focus,
+.snippetBody:not([readonly]):focus {
+    border-color: #fcd300;
+    outline: none;
+    box-shadow: 0 0 5px #fcd300;
+}
