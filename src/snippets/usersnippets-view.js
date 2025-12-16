@@ -46,13 +46,13 @@ function showSnippetsView(context, name, userSnippetsTreeProvider, userSnippetsS
                     deleteSnippet(context, name, message.snippetIndex, userSnippetsTreeProvider, userSnippetsService);
                     break;
                 case 'editSnippet':
-                    editSnippet(context, name, message.snippetIndex, message.snippet, userSnippetsService);
+                    editSnippet(context, name, message.snippetIndex, message.snippet, userSnippetsService, userSnippetsTreeProvider);
                     break;
                 case 'uploadSnippet':
                     uploadSnippet(name, message.snippetIndex, userSnippetsService);
                     break;
                 case 'addSnippet':
-                    addSnippet(context, name, message.snippet, userSnippetsService);
+                    addSnippet(context, name, message.snippet, userSnippetsService, userSnippetsTreeProvider);
                     break;
             }
         },
@@ -62,7 +62,6 @@ function showSnippetsView(context, name, userSnippetsTreeProvider, userSnippetsS
 }
 
 function getWebviewContent(safeUserSnippets, name, scriptUri, cssUri, codiconCss, codiconFont) {
-    console.log(scriptUri);
     return `<!DOCTYPE html>
     <html lang="en">
         <head>
@@ -97,13 +96,16 @@ function deleteSnippet(context, name, snippetIndex, userSnippetsTreeProvider, us
     userSnippetsTreeProvider.refresh();
 }
 
-function editSnippet(context, name, snippetIndex, snippet, userSnippetsService) {
+function editSnippet(context, name, snippetIndex, snippet, userSnippetsService, userSnippetsTreeProvider) {
     try {
         const userSnippets = userSnippetsService.getUserSnippets();
         
         userSnippets[name][snippetIndex] = snippet;
         
         userSnippetsService.setUserSnippets(userSnippets);
+
+        userSnippetsTreeProvider.rebuild();
+        userSnippetsTreeProvider.refresh();
     } catch (err) {
         console.error(err);
     }
@@ -113,12 +115,15 @@ function uploadSnippet(name, snippetIndex, userSnippetsService) {
     userSnippetsService.uploadUserSnippet(name, snippetIndex);
 }
 
-function addSnippet(context, name, snippet, userSnippetsService) {
+function addSnippet(context, name, snippet, userSnippetsService, userSnippetsTreeProvider) {
     const userSnippets = userSnippetsService.getUserSnippets();
 
     userSnippets[name].push(snippet);
 
     userSnippetsService.setUserSnippets(userSnippets);
+
+    userSnippetsTreeProvider.rebuild();
+    userSnippetsTreeProvider.refresh();
 }
 
 module.exports = {

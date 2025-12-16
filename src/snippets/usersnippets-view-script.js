@@ -2,7 +2,11 @@ const vscode = acquireVsCodeApi();
 
 const container = document.getElementById("snippetsContainer");
 
-function addSnippetCard(snippet, snippetIndex) {
+function getSnippetIndexFromCard(snippetCard) {
+    return [...snippetsPerNameContainer.children].indexOf(snippetCard);
+}
+
+function addSnippetCard(snippet) {
     let editing = false;
 
     const snippetCard = document.createElement("div");
@@ -105,28 +109,30 @@ function addSnippetCard(snippet, snippetIndex) {
                 description: snippetDescription.value
             }
 
-            safeUserSnippets[snippetIndex] = snippet;
+            safeUserSnippets[getSnippetIndexFromCard(snippetCard)] = snippet;
             vscode.postMessage({
                 command: "editSnippet",
-                snippetIndex: snippetIndex,
+                snippetIndex: getSnippetIndexFromCard(snippetCard),
                 snippet: snippet
             });
         }
     });
 
     deleteIcon.addEventListener("click", () => {
-        snippetCard.remove();
-
+        safeUserSnippets.splice(getSnippetIndexFromCard(snippetCard), 1);   
+        
         vscode.postMessage({
             command: "deleteSnippet",
-            snippetIndex: snippetIndex
+            snippetIndex: getSnippetIndexFromCard(snippetCard)
         });
+
+        snippetCard.remove();
     });
 
     uploadIcon.addEventListener("click", () => {
         vscode.postMessage({
             command: "uploadSnippet",
-            snippetIndex: snippetIndex
+            snippetIndex: getSnippetIndexFromCard(snippetCard)
         });
     });
 
@@ -137,13 +143,11 @@ const snippetName = document.createElement("h1");
 snippetName.className = "snippetName";
 snippetName.innerText = name;
 
-const snippetsPerNameContainer = document.createElement("div");
-snippetsPerNameContainer.className = "snippetsPerNameContainer";
-
 container.appendChild(snippetName);
 
 const newSnippetCard = document.createElement("div");
 newSnippetCard.className = "snippetCard";
+newSnippetCard.classList.add("newSnippetCard");
 
 const details = document.createElement("div");
 details.className = "details";
@@ -156,6 +160,8 @@ iconsContainer.className = "iconsContainer";
 
 const addIcon = document.createElement("i");
 addIcon.className = "codicon codicon-add";
+addIcon.title = "Add snippet";
+addIcon.classList.add("addIcon");
 
 iconsContainer.appendChild(addIcon);
 
@@ -167,6 +173,7 @@ const snippetPrefixLabel = document.createElement("label");
 snippetPrefixLabel.innerText = "Prefix"
 const snippetPrefix = document.createElement("textarea");
 snippetPrefix.className = "snippetPrefix";
+snippetPrefix.placeholder = "e.g. myReusableAdapter";
 
 snippetPrefixContainer.appendChild(snippetPrefixLabel);
 snippetPrefixContainer.appendChild(snippetPrefix);
@@ -177,6 +184,7 @@ const snippetDescriptionLabel = document.createElement("label");
 snippetDescriptionLabel.innerText = "Description"
 const snippetDescription = document.createElement("textarea");
 snippetDescription.className = "snippetDescription";
+snippetDescription.placeholder = "Short description of what this snippet is for";
 
 snippetDescriptionContainer.appendChild(snippetDescriptionLabel);
 snippetDescriptionContainer.appendChild(snippetDescription);
@@ -193,6 +201,7 @@ const snippetBodyLabel = document.createElement("label");
 snippetBodyLabel.innerText = "Body"
 const snippetBody = document.createElement("textarea");
 snippetBody.className = "snippetBody";
+snippetBody.placeholder = "Snippet body";
 
 snippetBodyContainer.appendChild(snippetBodyLabel);
 snippetBodyContainer.appendChild(snippetBody);
@@ -214,7 +223,11 @@ addIcon.addEventListener("click", () => {
     snippetBody.value = "";
     snippetDescription.value = "";
 
-    snippetsPerNameContainer.appendChild(addSnippetCard(snippet, 10));
+    const newIndex = safeUserSnippets.length;
+
+    safeUserSnippets.push(snippet);   
+
+    snippetsPerNameContainer.appendChild(addSnippetCard(snippet, newIndex));
 
     vscode.postMessage({
         command: "addSnippet",
@@ -224,8 +237,15 @@ addIcon.addEventListener("click", () => {
 
 container.appendChild(newSnippetCard);
 
-safeUserSnippets.forEach((snippet, snippetIndex) => {
-    let snippetCard = addSnippetCard(snippet, snippetIndex);
+const divider = document.createElement("div");
+divider.className = "snippetDivider";
+container.appendChild(divider);
+
+const snippetsPerNameContainer = document.createElement("div");
+snippetsPerNameContainer.className = "snippetsPerNameContainer";
+
+safeUserSnippets.forEach((snippet) => {
+    let snippetCard = addSnippetCard(snippet);
 
     snippetsPerNameContainer.appendChild(snippetCard);
 });

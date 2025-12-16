@@ -53,7 +53,7 @@ function activate(context) {
 	})
 
 	vscode.commands.registerCommand("frank.editUserSnippet", (item) => {
-		showSnippetsView(context, item.label, userSnippetsTreeProvider, userSnippetsService);
+		showSnippetsView(context, item.name, userSnippetsTreeProvider, userSnippetsService);
 	});
 
 	vscode.commands.registerCommand("frank.deleteUserSnippet", (item) => {
