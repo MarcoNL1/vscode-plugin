@@ -22,8 +22,8 @@ function activate(context) {
 	const userSnippetsDndController = new UserSnippetsDndController(context, userSnippetsTreeProvider, userSnippetsService);
 	const startService = new StartService();
 
-	userSnippetsService.ensureUserSnippetsFileExists();
-	userSnippetsService.getSnippets();
+	userSnippetsService.ensureSnippetsFilesExists();
+	userSnippetsService.loadFrankFrameworkSnippets();
 
 	const flowWebViewProvider = new FlowWebViewProvider(context);
 

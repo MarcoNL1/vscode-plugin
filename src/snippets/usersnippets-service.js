@@ -11,23 +11,27 @@ class UserSnippetsService {
     }
 
     getUserSnippetsPath() {
-        return path.join(
-            this.context.globalStorageUri.fsPath,
-            '../../snippets/usersnippets.code-snippets'
-        );
+        return path.join(this.context.globalStorageUri.fsPath,'../../snippets/usersnippets.code-snippets');
     }
 
-    ensureUserSnippetsFileExists() {
-        const userSnippetsStoragePath =  this.getUserSnippetsPath()
+    ensureSnippetsFilesExists() {
+        const storagePaths = [];
+        storagePaths.push(this.getUserSnippetsPath());
+        storagePaths.push(path.join(this.context.globalStorageUri.fsPath,'../../snippets/frankframework.code-snippets'));
 
-        const dir = path.dirname(userSnippetsStoragePath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
+        storagePaths.forEach(storagePath => {
+            const dir = path.dirname(storagePath);
 
-        if (!fs.existsSync(userSnippetsStoragePath)) {
-            fs.writeFileSync(userSnippetsStoragePath, "{}", "utf8");
-        }
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+
+            if (!fs.existsSync(storagePath)) {
+                fs.writeFileSync(storagePath, "{}", "utf8");
+            }
+        });
+
+        
     }
 
     getUserSnippets() {
@@ -245,7 +249,7 @@ ${userSnippets[name][snippetIndex]["body"]}
         }
     }
 
-    getSnippets() {
+    loadFrankFrameworkSnippets() {
         const storagePath = this.context.globalStorageUri.fsPath;
         fs.mkdirSync(storagePath, { recursive: true });
 

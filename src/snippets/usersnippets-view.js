@@ -18,7 +18,7 @@ function showSnippetsView(context, name, userSnippetsTreeProvider, userSnippetsS
     const userSnippets = userSnippetsService.getUserSnippets();
 
     const scriptPath = vscode.Uri.file(
-        path.join(context.extensionPath, 'src/snippets', 'usersnippets-view.script.js')
+        path.join(context.extensionPath, 'src/snippets', 'usersnippets-view-script.js')
     );
     const scriptUri = panel.webview.asWebviewUri(scriptPath);
 
@@ -62,31 +62,32 @@ function showSnippetsView(context, name, userSnippetsTreeProvider, userSnippetsS
 }
 
 function getWebviewContent(safeUserSnippets, name, scriptUri, cssUri, codiconCss, codiconFont) {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    console.log(scriptUri);
+    return `<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link href="${codiconCss}" rel="stylesheet">
+            <link href="${codiconCss}" rel="stylesheet">
 
-    <style>
-      @font-face {
-        font-family: 'codicon';
-        src: url('${codiconFont}') format('truetype');
-      }
-    </style>
+            <style>
+            @font-face {
+                font-family: 'codicon';
+                src: url('${codiconFont}') format('truetype');
+            }
+            </style>
 
-    <link rel="stylesheet" href="${cssUri}">
-</head>
-<body>
-    <div id="snippetsContainer"></div>
+            <link rel="stylesheet" href="${cssUri}">
+        </head>
+        <body>
+            <div id="snippetsContainer"></div>
 
-    <script>const safeUserSnippets = ${safeUserSnippets}</script>
-    <script>const name = "${name}"</script>
-    <script src="${scriptUri}"></script>
-</body>
-</html>`;
+            <script>const safeUserSnippets = ${safeUserSnippets}</script>
+            <script>const name = "${name}"</script>
+            <script src="${scriptUri}"></script>
+        </body>
+    </html>`;
 }
 
 function deleteSnippet(context, name, snippetIndex, userSnippetsTreeProvider, userSnippetsService) {
