@@ -79,10 +79,14 @@ class FlowWebViewProvider {
       );
       const scriptUri = this.webView.webview.asWebviewUri(scriptPath);
 
-      frankLayout.initMermaid2Svg(frankLayout.getFactoryDimensions());
-      const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
+      try {
+        frankLayout.initMermaid2Svg(frankLayout.getFactoryDimensions());
+        const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
 
-      this.webView.webview.html = getWebviewContent(svg, cssUri, scriptUri);
+        this.webView.webview.html = getWebviewContent(svg, cssUri, scriptUri);
+      } catch (err) {
+        this.webView.webview.html = getErrorWebviewContent("This XML cannot be converted to a Frank!Flow");
+      }
     }
 
 }
@@ -154,8 +158,8 @@ function getErrorWebviewContent(message) {
         </style>
     </head>
     <body>
-        <h2>XML Error</h2>
-        <p>Your XML is invalid:</p>
+        <h2>Error</h2>
+        <p>Something is wrong with your XML :(</p>
         <pre>${message}</pre>
     </body>
     </html>
