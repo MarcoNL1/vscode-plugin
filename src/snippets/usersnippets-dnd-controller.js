@@ -26,7 +26,7 @@ class UserSnippetsDndController {
     
     const payload = JSON.parse(dataItem.value); 
 
-    if (target?.contextValue === "snippetName") {
+    if (target?.contextValue === "snippetNameTreeItem") {
       let targetParent = target.label;
 
       payload.forEach(snippetTreeItem =>  {

@@ -48,8 +48,8 @@ function activate(context) {
 		dragAndDropController: userSnippetsDndController
 	});
 
-	vscode.commands.registerCommand('frank.test', (name) => {
-		userSnippetsService.newName(userSnippetsTreeProvider);
+	vscode.commands.registerCommand('frank.addNameOfUserSnippets', (name) => {
+		userSnippetsService.addNameOfUserSnippets(userSnippetsTreeProvider);
 	})
 
 	vscode.commands.registerCommand('frank.showSnippetsViewPerName', (name) => {
@@ -67,7 +67,7 @@ function activate(context) {
 		userSnippetsTreeProvider.refresh();
 	});
 
-	vscode.commands.registerCommand("frank.exportUserSnippet", (item) => {
+	vscode.commands.registerCommand("frank.exportUserSnippets", (item) => {
 		userSnippetsService.uploadUserSnippet(item.name, item.index);
 	});
 

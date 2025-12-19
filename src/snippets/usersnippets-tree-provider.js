@@ -52,7 +52,7 @@ class SnippetNameTreeItem {
     this.userSnippetsPerName = userSnippetsPerName;
     this.collapsibleState = collapsibleState;
     this.snippetTreeItems = [];
-    this.contextValue = "snippetName";
+    this.contextValue = "snippetNameTreeItem";
 
     this.command = {
       command: "frank.showSnippetsViewPerName",
@@ -81,11 +81,10 @@ class SnippetNameTreeItem {
 class SnippetTreeItem extends vscode.TreeItem {
   constructor(prefix, name, index) {
     super(prefix);
-    this.id = `${name}:${prefix}:${index}`;
+    this.id = `${name}:${index}:${prefix}`;
     this.prefix = prefix;
     this.name = name;
     this.index = index;
-
     this.contextValue = "snippetTreeItem";
   }
 }

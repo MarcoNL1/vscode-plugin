@@ -30,8 +30,6 @@ class UserSnippetsService {
                 fs.writeFileSync(storagePath, "{}", "utf8");
             }
         });
-
-        
     }
 
     getUserSnippets() {
@@ -121,65 +119,135 @@ class UserSnippetsService {
         }
     }
 
-    async uploadUserSnippet(name, snippetIndex) {      
+    deleteAllUserSnippetByName(name) {
         try {
             const userSnippets = this.getUserSnippets();
 
-            const storagePath = this.context.globalStorageUri.fsPath;
-            const targetDir = path.join(storagePath, "test");
-            const targetPath = path.join(targetDir, `${name}.md`)
-    
-            const data = `Example:
-\`\`\`xml
-${userSnippets[name][snippetIndex]["body"]}
-\`\`\`
-`;
+            delete userSnippets[name];
 
-            if (fs.existsSync(targetPath)) {
-                try {
-                    fs.appendFileSync(targetPath, data, "utf8");
-                } catch (err) {
-                    console.log(err);
-                }
-            } else {
-                try {
-                    fs.writeFileSync(targetPath, data, "utf8");
-                } catch (err) {
-                    console.log(err);
-                }
-            }
-            
+            this.setUserSnippets(userSnippets);
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    changeNameOfUserSnippets(oldName, name) {
+        const userSnippets = this.getUserSnippets();
+
+        if (Object.keys(userSnippets).includes(name)) {
+            vscode.window.showErrorMessage("error");
+            return;
+        }
+
+        if (oldName != name) {
             try {
-                exec(`git pull`, { cwd: targetDir }, (err) => {
-                    if (err) {
-                        console.log(err);
-                        vscode.window.showErrorMessage("error");
-                        return;
-                    }
-                    exec(`git add . `, { cwd: targetDir }, (err) => {
-                        if (err) {
-                            vscode.window.showErrorMessage("error");
-                            return;
-                        }
-                        exec(`git commit -m "test"`, { cwd: targetDir }, (err) => {
-                            if (err) {
-                                console.log(err);
-                                vscode.window.showErrorMessage("error");
-                                return;
-                            }
-                            exec(`git push`, { cwd: targetDir }, (err) => {
-                                if (err) {
-                                    console.log(err);
-                                    vscode.window.showErrorMessage("error");
-                                    return;
-                                }
-                            });
-                        });
-                    });
-                });
+                userSnippets[name] = userSnippets[oldName];
+
+                delete userSnippets[oldName];
+
+                this.setUserSnippets(userSnippets);
             } catch (err) {
                 console.log(err);
             }
+        }
+    }
+
+    async addNameOfUserSnippets(userSnippetsTreeProvider) {
+        const userSnippets = this.getUserSnippets();
+
+        const name = await vscode.window.showInputBox({
+            placeHolder: 'Give a name',
+            prompt: "Name is required",
+            validateInput: (value) => {
+                if (!value || value.trim() === "") {
+                    return "Name cannot be empty";
+                }
+                return null;
+            }
+        });
+    
+        if (!name) {
+            return;
+        }
+
+        userSnippets[name] = [];
+
+        this.setUserSnippets(userSnippets);
+
+        userSnippetsTreeProvider.rebuild();
+        userSnippetsTreeProvider.refresh();
+    }
+
+    async uploadUserSnippet(name) {    
+        const storagePath = this.context.globalStorageUri.fsPath;
+        const targetDir = path.join(storagePath, "test");
+        const targetPath = path.join(targetDir, `${name}.md`)
+
+        try {
+            exec(`git reset --hard`, { cwd: targetDir}, (err) => {
+                exec(`git clean -fd`, { cwd: targetDir}, (err) => {
+                    exec(`git pull`, { cwd: targetDir }, async (err) => {
+                        if (err) {
+                            console.log(err);
+                            vscode.window.showErrorMessage("error");
+                            return;
+                        }
+                
+                        const newFileText = "Replace all text in this file with your content.\n\nPlease make sure you use the right format:\n````xml\n<example>\n\t<example>\n<example>\n```\n\nSave to add this file as a page to the Frank!Framework Wiki.";
+
+                        if (!fs.existsSync(targetPath)) {
+                            const choice = await vscode.window.showInformationMessage(
+                                'Page doesn\'t exist in the current wiki, create a new page?',
+                                'Yes',
+                                'Cancel'
+                            );
+                            
+                            if (choice === 'Yes') {
+                                try {
+                                    fs.writeFileSync(targetPath, newFileText, "utf8");
+                                } catch (err) {
+                                    console.log(err);
+                                }
+                            } else {
+                                return;
+                            }
+                        }
+
+                        const doc = await vscode.workspace.openTextDocument(targetPath);
+                        await vscode.window.showTextDocument(doc);
+
+                        const saveListener = vscode.workspace.onDidSaveTextDocument((savedDoc) => {
+                            if (savedDoc.uri.fsPath === targetPath) {
+                                exec(`git add . `, { cwd: targetDir }, (err) => {
+                                    if (err) {
+                                        vscode.window.showErrorMessage("error");
+                                        return;
+                                    }
+                                    exec(`git commit -m "Updated ${name}.md"`, { cwd: targetDir }, (err) => {
+                                        if (err) {
+                                            console.log(err);
+                                            vscode.window.showErrorMessage("error");
+                                            return;
+                                        }
+                                        exec(`git push`, { cwd: targetDir }, (err) => {
+                                            if (err) {
+                                                console.log(err);
+                                                vscode.window.showErrorMessage("error");
+                                                return;
+                                            }
+
+                                            vscode.window.showInformationMessage("Snippet exported! You can close the file it won\'t make changes again.");
+                                        });
+                                    });
+                                });
+
+                                saveListener.dispose();
+                            }
+                        });
+                    });
+                });
+            });
+            
         } catch (err) {
             console.log(err);
         }

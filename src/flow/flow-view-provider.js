@@ -88,7 +88,6 @@ class FlowWebViewProvider {
         this.webView.webview.html = getErrorWebviewContent("This XML cannot be converted to a Frank!Flow");
       }
     }
-
 }
 
 function convertXSLtoSEF(context, xsl) {

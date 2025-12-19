@@ -12,32 +12,15 @@ function addSnippetCard(snippet) {
     const snippetCard = document.createElement("div");
     snippetCard.className = "snippetCard";
 
-    const footer = document.createElement("div");
-    footer.className = "footerRow";
-
-    const iconsContainer = document.createElement("div");
-    iconsContainer.className = "iconsContainer";
-
-    const editIcon = document.createElement("i");
-    editIcon.className = "codicon codicon-edit";
-    const deleteIcon = document.createElement("i");
-    deleteIcon.className = "codicon codicon-trash";
-    const uploadIcon = document.createElement("i");
-    uploadIcon.className = "codicon codicon-export";
-
-    iconsContainer.appendChild(editIcon);
-    iconsContainer.appendChild(deleteIcon);
-    iconsContainer.appendChild(uploadIcon);
-
-    footer.appendChild(iconsContainer);
-
     const details = document.createElement("div");
     details.className = "details";
 
     const snippetPrefixContainer = document.createElement("div");
     snippetPrefixContainer.className = "snippetPrefixContainer";
+
     const snippetPrefixLabel = document.createElement("label");
     snippetPrefixLabel.innerText = "Prefix"
+
     const snippetPrefix = document.createElement("textarea");
     snippetPrefix.className = "snippetPrefix";
     snippetPrefix.readOnly = !editing;
@@ -47,8 +30,10 @@ function addSnippetCard(snippet) {
 
     const snippetDescriptionContainer = document.createElement("div");
     snippetDescriptionContainer.className = "snippetDescriptionContainer";
+
     const snippetDescriptionLabel = document.createElement("label");
     snippetDescriptionLabel.innerText = "Description"
+
     const snippetDescription = document.createElement("textarea");
     snippetDescription.className = "snippetDescription";
     snippetDescription.readOnly = !editing;
@@ -64,14 +49,32 @@ function addSnippetCard(snippet) {
 
     const snippetBodyContainer = document.createElement("div");
     snippetBodyContainer.className = "snippetBodyContainer";
+
     const snippetBodyLabel = document.createElement("label");
     snippetBodyLabel.innerText = "Body"
+
+    const snippetBodyTextareaContainer = document.createElement("div");
+    snippetBodyTextareaContainer.className = "snippetBodyTextareaContainer";
+
     const snippetBody = document.createElement("textarea");
     snippetBody.readOnly = !editing;
     snippetBody.className = "snippetBody";
 
+    const copyIcon = document.createElement("i");
+    copyIcon.className = "codicon codicon-copy";
+
+    copyIcon.addEventListener("click", () => {
+        vscode.postMessage({
+            command: "copySnippet",
+            snippet: snippetBody.value
+        });
+    });
+
+    snippetBodyTextareaContainer.appendChild(snippetBody);
+    snippetBodyTextareaContainer.appendChild(copyIcon);
+
     snippetBodyContainer.appendChild(snippetBodyLabel);
-    snippetBodyContainer.appendChild(snippetBody);
+    snippetBodyContainer.appendChild(snippetBodyTextareaContainer);
 
     body.appendChild(snippetBodyContainer);
 
@@ -81,7 +84,6 @@ function addSnippetCard(snippet) {
 
     snippetCard.appendChild(details);
     snippetCard.appendChild(body);
-    snippetCard.appendChild(footer);
 
     snippetPrefix.addEventListener("focus", (e) => {
         if (snippetPrefix.readOnly) e.target.blur();
@@ -92,6 +94,22 @@ function addSnippetCard(snippet) {
     snippetBody.addEventListener("focus", (e) => {
         if (snippetBody.readOnly) e.target.blur();
     });
+
+    const footer = document.createElement("div");
+    footer.className = "footerRow";
+
+    const iconsContainer = document.createElement("div");
+    iconsContainer.className = "iconsContainer";
+
+    const editIcon = document.createElement("i");
+    editIcon.className = "codicon codicon-edit";
+    const deleteIcon = document.createElement("i");
+    deleteIcon.className = "codicon codicon-trash";
+
+    iconsContainer.appendChild(editIcon);
+    iconsContainer.appendChild(deleteIcon);
+
+    footer.appendChild(iconsContainer);
 
     editIcon.addEventListener("click", () => {
         editing = !editing;
@@ -129,21 +147,69 @@ function addSnippetCard(snippet) {
         snippetCard.remove();
     });
 
-    uploadIcon.addEventListener("click", () => {
-        vscode.postMessage({
-            command: "uploadSnippet",
-            snippetIndex: getSnippetIndexFromCard(snippetCard)
-        });
-    });
+    snippetCard.appendChild(footer);
 
     return snippetCard;
 }
 
-const snippetName = document.createElement("h1");
-snippetName.className = "snippetName";
-snippetName.innerText = name;
+const header = document.createElement("div");
+header.className = "header";
 
-container.appendChild(snippetName);
+let editingName = false;
+
+const snippetNameContainer = document.createElement("div");
+snippetNameContainer.className = "snippetNameContainer";
+
+const snippetName = document.createElement("textarea");
+snippetName.className = "snippetName";
+snippetName.value = name;
+snippetName.readOnly = !editingName;
+
+snippetNameContainer.appendChild(snippetName);
+
+const editIcon = document.createElement("i");
+editIcon.className = "codicon codicon-edit";
+editIcon.title = "Change name";
+
+editIcon.addEventListener("click", () => {
+    editingName = !editingName;
+
+    snippetName.readOnly = !editingName;
+ 
+    editIcon.className = editingName ? "codicon codicon-save" : "codicon codicon-edit";
+
+    if (!editingName) {
+        vscode.postMessage({
+            command: "changeName",
+            newName: snippetName.value
+        });
+    }
+});
+
+snippetNameContainer.appendChild(editIcon);
+
+const contributeButton = document.createElement("button");
+contributeButton.className = "contributeButton";
+
+contributeButton.innerText = "Contribute to the Frank!Framework Wiki!";
+
+const exportIcon = document.createElement("i");
+exportIcon.className = "codicon codicon-export";
+exportIcon.title = "Export snippet";
+
+contributeButton.appendChild(exportIcon);
+
+contributeButton.addEventListener("click", () => {
+    vscode.postMessage({
+        command: "exportUserSnippets",
+        name: name
+    });
+});
+
+header.appendChild(snippetNameContainer);
+header.appendChild(contributeButton);
+
+container.appendChild(header);
 
 const newSnippetCard = document.createElement("div");
 newSnippetCard.className = "snippetCard";
@@ -213,26 +279,32 @@ newSnippetCard.appendChild(body);
 newSnippetCard.appendChild(footer);
 
 addIcon.addEventListener("click", () => {
-    const snippet = {
-        prefix: snippetPrefix.value,
-        body: snippetBody.value,
-        description: snippetDescription.value
-    }
+    if (!snippetPrefix.value.trim()|| !snippetBody.value.trim() || !snippetDescription.value.trim() ) {
+        vscode.postMessage({
+            command: "error",
+        });
+    } else {
+        const snippet = {
+            prefix: snippetPrefix.value,
+            body: snippetBody.value,
+            description: snippetDescription.value
+        }
 
-    snippetPrefix.value = "";
-    snippetBody.value = "";
-    snippetDescription.value = "";
+        snippetPrefix.value = "";
+        snippetBody.value = "";
+        snippetDescription.value = "";
 
-    const newIndex = safeUserSnippets.length;
+        const newIndex = safeUserSnippets.length;
 
-    safeUserSnippets.push(snippet);   
+        safeUserSnippets.push(snippet);   
 
-    snippetsPerNameContainer.appendChild(addSnippetCard(snippet, newIndex));
+        snippetsPerNameContainer.appendChild(addSnippetCard(snippet, newIndex));
 
-    vscode.postMessage({
-        command: "addSnippet",
-        snippet: snippet
-    });
+        vscode.postMessage({
+            command: "addSnippet",
+            snippet: snippet
+        });
+        }
 });
 
 container.appendChild(newSnippetCard);

@@ -15,14 +15,10 @@ function showSnippetsView(context, name, userSnippetsTreeProvider, userSnippetsS
         ]
     });
 
-    const userSnippets = userSnippetsService.getUserSnippets();
-
     const scriptPath = vscode.Uri.file(
         path.join(context.extensionPath, 'src/snippets', 'usersnippets-view-script.js')
     );
     const scriptUri = panel.webview.asWebviewUri(scriptPath);
-
-    const safeUserSnippets = JSON.stringify(userSnippets[name]);
 
     const cssPath = vscode.Uri.file(
         path.join(context.extensionPath, 'resources/css', 'usersnippets-view-webcontent.css')
@@ -37,6 +33,8 @@ function showSnippetsView(context, name, userSnippetsTreeProvider, userSnippetsS
         vscode.Uri.joinPath(context.extensionUri, 'resources/css', 'codicon.ttf')
     );
 
+    const safeUserSnippets = JSON.stringify(userSnippetsService.getUserSnippets()[name]);
+
     panel.webview.html = getWebviewContent(safeUserSnippets, name, scriptUri, cssUri, codiconCss, codiconFont);
 
     panel.webview.onDidReceiveMessage(
@@ -48,17 +46,79 @@ function showSnippetsView(context, name, userSnippetsTreeProvider, userSnippetsS
                 case 'editSnippet':
                     editSnippet(context, name, message.snippetIndex, message.snippet, userSnippetsService, userSnippetsTreeProvider);
                     break;
-                case 'uploadSnippet':
-                    uploadSnippet(name, message.snippetIndex, userSnippetsService);
-                    break;
                 case 'addSnippet':
                     addSnippet(context, name, message.snippet, userSnippetsService, userSnippetsTreeProvider);
+                    break;
+                case 'exportUserSnippets':
+                    exportUserSnippets(context, message.name, userSnippetsService);
+                    break;
+                case 'changeNameOfuserSnippets':
+                    changeNameOfuserSnippets(context, name, message.newName, userSnippetsService, userSnippetsTreeProvider);
+                    break;
+                case 'copySnippet':
+                    copySnippet(message.snippet);
+                    break;
+                case 'showError':
+                    showError();
                     break;
             }
         },
         null,
         context.subscriptions
     );
+}
+
+function deleteSnippet(context, name, snippetIndex, userSnippetsTreeProvider, userSnippetsService) {
+    userSnippetsService.deleteUserSnippet(name, snippetIndex);
+
+    userSnippetsTreeProvider.rebuild();
+    userSnippetsTreeProvider.refresh();
+}
+
+function editSnippet(context, name, snippetIndex, snippet, userSnippetsService, userSnippetsTreeProvider) {
+    try {
+        const userSnippets = userSnippetsService.getUserSnippets();
+        
+        userSnippets[name][snippetIndex] = snippet;
+        
+        userSnippetsService.setUserSnippets(userSnippets);
+
+        userSnippetsTreeProvider.rebuild();
+        userSnippetsTreeProvider.refresh();
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function addSnippet(context, name, snippet, userSnippetsService, userSnippetsTreeProvider) {
+    const userSnippets = userSnippetsService.getUserSnippets();
+
+    userSnippets[name].push(snippet);
+
+    userSnippetsService.setUserSnippets(userSnippets);
+
+    userSnippetsTreeProvider.rebuild();
+    userSnippetsTreeProvider.refresh();
+}
+
+function exportUserSnippets(context, name, userSnippetsService) {
+    userSnippetsService.uploadUserSnippet(name);
+}
+
+function changeNameOfuserSnippets(context, oldName, newName, userSnippetsService, userSnippetsTreeProvider) {
+    userSnippetsService.changeNameOfUserSnippets(oldName, newName);
+
+    userSnippetsTreeProvider.rebuild();
+    userSnippetsTreeProvider.refresh();
+}
+
+function copySnippet(snippet) {
+    vscode.env.clipboard.writeText(snippet);
+    vscode.window.showInformationMessage("Copied snippet to clipboard!");
+}
+
+function showError() {
+    vscode.window.showErrorMessage("Error");
 }
 
 function getWebviewContent(safeUserSnippets, name, scriptUri, cssUri, codiconCss, codiconFont) {
@@ -87,43 +147,6 @@ function getWebviewContent(safeUserSnippets, name, scriptUri, cssUri, codiconCss
             <script src="${scriptUri}"></script>
         </body>
     </html>`;
-}
-
-function deleteSnippet(context, name, snippetIndex, userSnippetsTreeProvider, userSnippetsService) {
-    userSnippetsService.deleteUserSnippet(name, snippetIndex);
-
-    userSnippetsTreeProvider.rebuild();
-    userSnippetsTreeProvider.refresh();
-}
-
-function editSnippet(context, name, snippetIndex, snippet, userSnippetsService, userSnippetsTreeProvider) {
-    try {
-        const userSnippets = userSnippetsService.getUserSnippets();
-        
-        userSnippets[name][snippetIndex] = snippet;
-        
-        userSnippetsService.setUserSnippets(userSnippets);
-
-        userSnippetsTreeProvider.rebuild();
-        userSnippetsTreeProvider.refresh();
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-function uploadSnippet(name, snippetIndex, userSnippetsService) {
-    userSnippetsService.uploadUserSnippet(name, snippetIndex);
-}
-
-function addSnippet(context, name, snippet, userSnippetsService, userSnippetsTreeProvider) {
-    const userSnippets = userSnippetsService.getUserSnippets();
-
-    userSnippets[name].push(snippet);
-
-    userSnippetsService.setUserSnippets(userSnippets);
-
-    userSnippetsTreeProvider.rebuild();
-    userSnippetsTreeProvider.refresh();
 }
 
 module.exports = {

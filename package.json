@@ -1,8 +1,8 @@
 {
   "name": "wearefrank",
   "publisher": "wearefrank",
-  "displayName": "Frank!",
-  "description": "A test for WeAreFrank!",
+  "displayName": "Frank!Framework",
+  "description": "A plugin to help users with the development of their Frank!Framework integrations!",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.107.0"
@@ -26,7 +26,11 @@
           "when": "false"
         },
         {
-          "command": "frank.exportUserSnippet",
+          "command": "frank.exportUserSnippets",
+          "when": "false"
+        },
+        {
+          "command": "frank.deleteAllUserSnippetByName",
           "when": "false"
         }
       ],
@@ -35,6 +39,13 @@
           "command": "frank.addUserSnippet",
           "when": "editor.hasSelection",
           "group": "Frank@1"
+        }
+      ],
+      "view/title" : [
+        {
+          "command": "frank.addNameOfUserSnippets",
+          "when": "view == userSnippetsTreeview",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -49,9 +60,9 @@
           "group": "inline@2"
         },
         {
-          "command": "frank.exportUserSnippet",
-          "when": "view == userSnippetsTreeview && viewItem == snippetTreeItem",
-          "group": "inline@3"
+          "command": "frank.deleteAllUserSnippetByName",
+          "when": "view == userSnippetsTreeview && viewItem == snippetNameTreeItem",
+          "group": "inline"
         }
       ]
     },
@@ -91,13 +102,22 @@
         "icon": "$(trash)"
       },
       {
-        "command": "frank.exportUserSnippet",
-        "title": "Export Snippet",
-        "icon": "$(export)"
+        "command": "frank.exportUserSnippets",
+        "title": "Export Snippet"
       },
       {
-        "command": "frank.testtest",
-        "title": "Test"
+        "command": "frank.deleteAllUserSnippetByName",
+        "title": "Delete All Snippets",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "frank.changeNameOfUserSnippets",
+        "title": "Change Name"
+      },
+      {
+        "command": "frank.addNameOfUserSnippets",
+        "title": "Add a New Name",
+        "icon": "$(add)"
       }
     ],
     "viewsContainers": {

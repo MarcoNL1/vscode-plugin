@@ -2,10 +2,26 @@ body {
     font-family: Arial, sans-serif;
 }
 
+.snippetNameContainer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #676a6c;
+}
+
 .snippetName {
     font-size: 20px;
     font-weight: bold;
     color: #676a6c;
+    resize: none;
+    border: none;
+    background: none;
+    field-sizing: content;
+}
+
+.snippetName:focus {
+    outline: none;
+    border:none;
 }
 
 .snippetsPerNameContainer {
@@ -86,4 +102,47 @@ body {
     height: 1px;
     margin: 15px 0;
     background-color: #d8d8d8;
+}
+
+.header {
+    display: flex;
+    align-items: auto;
+    margin: 10px 0;
+}
+
+.contributeButton {
+    color: #676a6c;
+    font-weight: bold;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border: none;
+    background: none;
+    transition: color 0.2s;
+}
+
+.contributeButton:hover {
+    cursor: pointer;
+    color: #fcd300;
+}
+
+.snippetBodyTextareaContainer {
+    position: relative;
+}
+
+.snippetBodyTextareaContainer > i {
+    position: absolute;
+    top: 10px;
+    right: 5px;
+    cursor: pointer;
+    color: #676a6c;
+}
+
+i {
+    transition: color 0.2s;
+}
+
+i:hover {
+    color: #fcd300;
 }
