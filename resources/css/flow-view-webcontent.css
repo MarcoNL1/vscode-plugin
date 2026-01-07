@@ -15,7 +15,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: white;
+    background-color: var(--vscode-editor-background);
 }
 
 #container svg {
@@ -39,4 +39,12 @@ html, body {
 #toolbar i:hover {
     cursor: pointer;
     color: #fcd300;
+}
+
+svg text {
+    fill: var(--vscode-editor-foreground);
+}
+
+svg marker {
+    fill: var(--vscode-editor-foreground);
 }
