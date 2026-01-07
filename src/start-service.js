@@ -14,13 +14,23 @@ class StartService {
         let newFile = fs.readFileSync(defaultFilePath, 'utf8');
 
         if (file === "compose.frank.loc.yaml") {
-            const skeletonrcJSONPath = path.join(workspaceRoot, "skeletonrc.json");
-            const skeletonrcJSON = JSON.parse(fs.readFileSync(skeletonrcJSONPath, 'utf8'));
+            if (workspaceRoot.toLowerCase().endsWith('\\frank-runner')) {
+                vscode.window.showErrorMessage("Please add the compose.frank.loc.yaml manually.");
+                return false;
+            }
 
-            newFile = newFile.replace("placeholder", skeletonrcJSON.mappings["{{ cookiecutter.instance_name_lc }}"]);
+            const skeletonrcJSONPath = path.join(workspaceRoot, "skeletonrc.json");
+
+            if (fs.existsSync(skeletonrcJSONPath)) {
+                const skeletonrcJSON = JSON.parse(fs.readFileSync(skeletonrcJSONPath, 'utf8'));
+
+                newFile = newFile.replace("placeholder", skeletonrcJSON.mappings["{{ cookiecutter.instance_name_lc }}"]);
+            }
         }
         
         fs.writeFileSync(newFilePath, newFile, "utf8");
+
+        return true;
     }
 
     async getWorkingDirectory(file) {
@@ -62,16 +72,19 @@ class StartService {
                 
                 if (choice === 'Yes') {
                     try {
-                        this.createFile(lastDir, file);
-                        return lastDir;
+                        const createdFile = await this.createFile(lastDir, file);
+
+                        if (createdFile) {
+                            return lastDir;
+                        } else {
+                            return null;
+                        }
                     } catch (err) {
-                        console.log(err);
+                        return null;
                     }
                 } else {
-                    return;
+                    return null;
                 }
-
-                return;
             }
 
             lastDir = currentDir;
@@ -89,12 +102,21 @@ class StartService {
 
         const workingDir = await this.getWorkingDirectory("build.xml");
 
+        if (!workingDir) {
+            return;
+        }
+
         const term = vscode.window.createTerminal("Frank Ant");
 
         term.show();
 
         term.sendText(`cd "${workingDir}"`);
-        term.sendText(`../frank-runner/ant.bat`);
+
+        if (workingDir.includes('frank-runner\\examples')){
+            term.sendText(`../../ant.bat`);
+        } else {
+            term.sendText(`../frank-runner/ant.bat`);
+        }
     }
 
     async startWithDocker() {
@@ -106,6 +128,10 @@ class StartService {
         }
 
         const workingDir = await this.getWorkingDirectory("Dockerfile");
+
+        if (!workingDir) {
+            return;
+        }
 
         const projectName = path.basename(path.dirname(workingDir));
 
@@ -127,6 +153,10 @@ class StartService {
         }
 
         const workingDir = await this.getWorkingDirectory("compose.frank.loc.yaml");
+        
+        if (!workingDir) {
+            return;
+        }
 
         var term = vscode.window.createTerminal('cmd');
         term.show();
