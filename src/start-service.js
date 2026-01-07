@@ -11,7 +11,7 @@ class StartService {
         const newFilePath = path.join(workspaceRoot, file)
 
         const defaultFilePath = path.join(this.context.extensionPath, 'resources', file)
-        const newFile = fs.readFileSync(filePath, 'utf8');
+        let newFile = fs.readFileSync(defaultFilePath, 'utf8');
 
         if (file === "compose.frank.loc.yaml") {
             const skeletonrcJSONPath = path.join(workspaceRoot, "skeletonrc.json");

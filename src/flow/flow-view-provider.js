@@ -5,7 +5,7 @@ const SaxonJS = require('saxon-js');
 const frankLayout = require("@frankframework/frank-config-layout");
 const { JSDOM } = require("jsdom")
 
-class FlowWebViewProvider {
+class FrankFlowViewProvider {
     constructor(context) {
       this.context = context;
     }
@@ -33,14 +33,14 @@ class FlowWebViewProvider {
       const parserErrors = xml.getElementsByTagName("parsererror");
 
       if (parserErrors.length > 0) {
-          const errorMessage = parserErrors[0].textContent;
-          this.webView.webview.html = getErrorWebviewContent(errorMessage);
+          const error = parserErrors[0].textContent;
+          this.webView.webview.html = getErrorWebviewContent(error);
           return;
       }
 
       const canonicalizeSef = convertXSLtoSEF(this.context, "canonicalize");
 
-      const preprocessXml = SaxonJS.transform({
+      const canoncalizedXml = SaxonJS.transform({
         stylesheetText: canonicalizeSef,
         sourceText: config,
         destination: "serialized"
@@ -62,37 +62,55 @@ class FlowWebViewProvider {
 
       const mermaid = SaxonJS.transform({
         stylesheetText: mermaidSef,
-        sourceText: preprocessXml.principalResult,
+        sourceText: canoncalizedXml.principalResult,
         destination: "serialized",
         stylesheetParams: {
           frankElements: paramsXdm
         }
       });
 
-      const cssPath = vscode.Uri.file(
-          path.join(this.context.extensionPath, 'resources/css', 'flow-view-webcontent.css')
+      const css = this.webView.webview.asWebviewUri(
+        vscode.Uri.joinPath(
+          this.context.extensionUri,
+          'resources',
+          'css',
+          'flow-view-webcontent.css'
+        )
       );
-      const cssUri = this.webView.webview.asWebviewUri(cssPath);
-
-      const scriptPath = vscode.Uri.file(
-          path.join(this.context.extensionPath, 'src/flow', 'flow-view-script.js')
-      );
-      const scriptUri = this.webView.webview.asWebviewUri(scriptPath);
-
-      const zoomScriptPath = vscode.Uri.file(
-          path.join(this.context.extensionPath, 'node_modules/svg-pan-zoom/dist/svg-pan-zoom.min.js')
-      );
-      const zoomScriptUri = this.webView.webview.asWebviewUri(zoomScriptPath);
 
       const codiconCss = this.webView.webview.asWebviewUri(
-          vscode.Uri.joinPath(this.context.extensionUri, 'resources/css', 'codicon.css')
+        vscode.Uri.joinPath(
+          this.context.extensionUri,
+          'resources',
+          'css',
+          'codicon.css'
+        )
+      );
+
+      const script = this.webView.webview.asWebviewUri(
+        vscode.Uri.joinPath(
+          this.context.extensionUri,
+          'src',
+          'flow',
+          'flow-view-script.js'
+        )
+      );
+
+      const zoomScript = this.webView.webview.asWebviewUri(
+        vscode.Uri.joinPath(
+          this.context.extensionUri,
+          'node_modules',
+          'svg-pan-zoom',
+          'dist',
+          'svg-pan-zoom.min.js'
+        )
       );
 
       try {
         frankLayout.initMermaid2Svg(frankLayout.getFactoryDimensions());
         const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
 
-        this.webView.webview.html = getWebviewContent(svg, cssUri, codiconCss, scriptUri, zoomScriptUri);
+        this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
       } catch (err) {
         this.webView.webview.html = getErrorWebviewContent("This XML cannot be converted to a Frank!Flow");
       }
@@ -127,15 +145,15 @@ function getCurrentConfiguration() {
   return editor.document.getText();
 }
 
-function getWebviewContent(svg, cssUri, codiconCss, scriptUri, zoomScriptUri) {
+function getWebviewContent(svg, css, codiconCss, script, zoomScript) {
   return `
   <!DOCTYPE html>
   <html>
       <head>
         <meta charset="UTF-8">
         <title>Frank!Flow</title>
-        <link rel="stylesheet" href="${cssUri}">
-        <link href="${codiconCss}" rel="stylesheet">
+        <link rel="stylesheet" href="${css}">
+        <link rel="stylesheet" href="${codiconCss}" >
       </head>
       <body>
         <div id="container">
@@ -147,14 +165,14 @@ function getWebviewContent(svg, cssUri, codiconCss, scriptUri, zoomScriptUri) {
           </div>
         </div>
 
-        <script src="${zoomScriptUri}"></script>
-        <script src="${scriptUri}"></script>
+        <script src="${zoomScript}"></script>
+        <script src="${script}"></script>
       </body>
   </html>
   `;
 }
 
-function getErrorWebviewContent(message) {
+function getErrorWebviewContent(error) {
     return `
     <!DOCTYPE html>
     <html>
@@ -178,10 +196,10 @@ function getErrorWebviewContent(message) {
     <body>
         <h2>Error</h2>
         <p>Something is wrong with your XML :(</p>
-        <pre>${message}</pre>
+        <pre>${error}</pre>
     </body>
     </html>
     `;
 }
 
-module.exports = FlowWebViewProvider;
+module.exports = FrankFlowViewProvider;

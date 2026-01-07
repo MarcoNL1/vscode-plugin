@@ -6,11 +6,11 @@ function fitSvg() {
     const bbox = svg.getBBox();
     if (!bbox.width || !bbox.height) return;
 
-    const PADDING = 10;
+    const padding = 10;
 
     svg.setAttribute(
         "viewBox",
-        `${bbox.x - PADDING} ${bbox.y - PADDING} ${bbox.width + PADDING * 2} ${bbox.height + PADDING * 2}`
+        `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`
     );
 
     svg.removeAttribute("width");
@@ -22,6 +22,7 @@ let panZoom;
 
 window.addEventListener("load", () => {
     fitSvg();
+    
     panZoom = svgPanZoom(svg, {
         zoomEnabled: true,
         controlIconsEnabled: false,

@@ -12,7 +12,7 @@ class UserSnippetsDndController {
   async handleDrag(sourceItems, dataTransfer, token) {
     const payload = sourceItems.map(item => ({
       index: item.index,
-      parent: item.name
+      parent: item.category
     }));
 
     dataTransfer.set(
@@ -26,7 +26,7 @@ class UserSnippetsDndController {
     
     const payload = JSON.parse(dataItem.value); 
 
-    if (target?.contextValue === "snippetNameTreeItem") {
+    if (target?.contextValue === "categoryTreeItem") {
       let targetParent = target.label;
 
       payload.forEach(snippetTreeItem =>  {

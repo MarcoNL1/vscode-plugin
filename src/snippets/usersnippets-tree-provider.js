@@ -15,17 +15,17 @@ class UserSnippetsTreeProvider {
   }
 
   rebuild() {
-    const snippetsPerNameTreeItems = [];
+    const snippetsPerCategoryTreeItems = [];
 
     let userSnippets = this.userSnippetsService.getUserSnippets();
 
-    for (let name in userSnippets) {
-      snippetsPerNameTreeItems.push(
-        this.convertUserSnippetsToSnippetNameTreeItems(name, userSnippets[name])                                                                                             
+    for (let category in userSnippets) {
+      snippetsPerCategoryTreeItems.push(
+        this.convertUserSnippetsToCategoryTreeItems(category, userSnippets[category])                                                                                             
       );
     }
 
-    this.userSnippetsTreeItems = snippetsPerNameTreeItems;
+    this.userSnippetsTreeItems = snippetsPerCategoryTreeItems;
   }
 
   getTreeItem(snippet) {
@@ -40,24 +40,24 @@ class UserSnippetsTreeProvider {
     }
   }
 
-  convertUserSnippetsToSnippetNameTreeItems(name, userSnippetsPerName) {
-    const snippetNameTreeItem = new SnippetNameTreeItem(name, userSnippetsPerName, vscode.TreeItemCollapsibleState.Expanded)
-    return snippetNameTreeItem;
+  convertUserSnippetsToCategoryTreeItems(category, userSnippetsPerCategory) {
+    const categoryTreeItem = new CategoryTreeItem(category, userSnippetsPerCategory, vscode.TreeItemCollapsibleState.Expanded)
+    return categoryTreeItem;
   }
 }
 
-class SnippetNameTreeItem {
-  constructor(name, userSnippetsPerName, collapsibleState) {
-    this.label = name;
-    this.userSnippetsPerName = userSnippetsPerName;
+class CategoryTreeItem {
+  constructor(category, userSnippetsPerCategory, collapsibleState) {
+    this.label = category;
+    this.userSnippetsPerCategory = userSnippetsPerCategory;
     this.collapsibleState = collapsibleState;
     this.snippetTreeItems = [];
-    this.contextValue = "snippetNameTreeItem";
+    this.contextValue = "categoryTreeItem";
 
     this.command = {
-      command: "frank.showSnippetsViewPerName",
+      command: "frank.showUserSnippetsViewPerCategory",
       title: "Show Snippets",
-      arguments: [name]
+      arguments: [category]
     };
 
     this.convertSnippetToSnippetTreeItems();
@@ -66,7 +66,7 @@ class SnippetNameTreeItem {
   convertSnippetToSnippetTreeItems() {
     const arr = [];
 
-    this.userSnippetsPerName.forEach((snippet, index) => {
+    this.userSnippetsPerCategory.forEach((snippet, index) => {
       arr.push(new SnippetTreeItem(snippet.prefix, this.label, index));
     });
 
@@ -79,11 +79,11 @@ class SnippetNameTreeItem {
 }
 
 class SnippetTreeItem extends vscode.TreeItem {
-  constructor(prefix, name, index) {
+  constructor(prefix, category, index) {
     super(prefix);
-    this.id = `${name}:${index}:${prefix}`;
+    this.id = `${category}:${index}:${prefix}`;
     this.prefix = prefix;
-    this.name = name;
+    this.category = category;
     this.index = index;
     this.contextValue = "snippetTreeItem";
   }

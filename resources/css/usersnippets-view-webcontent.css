@@ -2,14 +2,14 @@ body {
     font-family: Arial, sans-serif;
 }
 
-.snippetNameContainer {
+.snippetCategoryContainer {
     display: flex;
     align-items: center;
     gap: 5px;
     color: #676a6c;
 }
 
-.snippetName {
+.snippetCategory {
     font-size: 20px;
     font-weight: bold;
     color: #676a6c;
@@ -19,12 +19,12 @@ body {
     field-sizing: content;
 }
 
-.snippetName:focus {
+.snippetCategory:focus {
     outline: none;
     border:none;
 }
 
-.snippetsPerNameContainer {
+.snippetsPerCategoryContainer {
     transition: height 0.5s ease, opacity 0.5s ease;
 }
 

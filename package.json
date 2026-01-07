@@ -26,24 +26,20 @@
           "when": "false"
         },
         {
-          "command": "frank.exportUserSnippets",
-          "when": "false"
-        },
-        {
-          "command": "frank.deleteAllUserSnippetByName",
+          "command": "frank.deleteAllUserSnippetByCategory",
           "when": "false"
         }
       ],
       "editor/context": [
         {
-          "command": "frank.addUserSnippet",
+          "command": "frank.addNewUserSnippet",
           "when": "editor.hasSelection",
           "group": "Frank@1"
         }
       ],
       "view/title": [
         {
-          "command": "frank.addNameOfUserSnippets",
+          "command": "frank.addNewCategoryOfUserSnippets",
           "when": "view == userSnippetsTreeview",
           "group": "navigation"
         }
@@ -60,8 +56,8 @@
           "group": "inline@2"
         },
         {
-          "command": "frank.deleteAllUserSnippetByName",
-          "when": "view == userSnippetsTreeview && viewItem == snippetNameTreeItem",
+          "command": "frank.deleteAllUserSnippetByCategory",
+          "when": "view == userSnippetsTreeview && viewItem == categoryTreeItem",
           "group": "inline"
         }
       ]
@@ -84,12 +80,12 @@
         "title": "Start a Frank With Docker Compose"
       },
       {
-        "command": "frank.addUserSnippet",
+        "command": "frank.addNewUserSnippet",
         "title": "Add a New Frank! Snippet"
       },
       {
-        "command": "frank.createNewAdapter",
-        "title": "Create a New Adapter"
+        "command": "frank.addNewAdapter",
+        "title": "Add a New Adapter"
       },
       {
         "command": "frank.editUserSnippet",
@@ -102,61 +98,53 @@
         "icon": "$(trash)"
       },
       {
-        "command": "frank.exportUserSnippets",
-        "title": "Export Snippet"
-      },
-      {
-        "command": "frank.deleteAllUserSnippetByName",
+        "command": "frank.deleteAllUserSnippetByCategory",
         "title": "Delete All Snippets",
         "icon": "$(trash)"
       },
       {
-        "command": "frank.changeNameOfUserSnippets",
-        "title": "Change Name"
-      },
-      {
-        "command": "frank.addNameOfUserSnippets",
-        "title": "Add a New Name",
+        "command": "frank.addNewCategoryOfUserSnippets",
+        "title": "Add a New Category",
         "icon": "$(add)"
       }
     ],
     "viewsContainers": {
       "secondarySidebar": [
         {
-          "id": "flowView",
+          "id": "frankFlowViewContainer",
           "title": "Frank!Flow",
           "icon": "resources/wearefrank_logo.svg"
         }
       ],
       "activitybar": [
         {
-          "id": "frank",
+          "id": "welcomeViewContainer",
           "title": "Frank!Framework",
           "icon": "resources/wearefrank_logo.svg"
         }
       ]
     },
     "views": {
-      "flowView": [
+      "frankFlowViewContainer": [
         {
-          "id": "flowWebView",
+          "id": "frankFlowView",
           "name": "Frank!Flow",
           "type": "webview"
         }
       ],
-      "frank": [
+      "welcomeViewContainer": [
         {
-          "id": "frankwelcome",
+          "id": "welcomeView",
           "name": "Frank!Framework"
         }
       ],
       "explorer": [
         {
-          "id": "start",
+          "id": "startView",
           "name": "Start!"
         },
         {
-          "id": "adapter",
+          "id": "adapterView",
           "name": "Adapter!"
         },
         {
@@ -167,15 +155,15 @@
     },
     "viewsWelcome": [
       {
-        "view": "frankwelcome",
+        "view": "welcomeView",
         "contents": "Welcome to the Frank!Framework!\nThe Frank!Framework is an easy-to-use, stateless integration framework which allows (transactional) messages to be modified and exchanged between different systems.\n[Open a Frank](command:vscode.openFolder)\n[Create a Frank](command:frank.createNewFrank)"
       },
       {
-        "view": "adapter",
-        "contents": "[Create an Adapter](command:frank.createNewAdapter)"
+        "view": "adapterView",
+        "contents": "[Create an Adapter](command:frank.addNewAdapter)"
       },
       {
-        "view": "start",
+        "view": "startView",
         "contents": "[Start](command:frank.startAnt)\n[Start With Docker](command:frank.startDocker)\n[Start With Docker Compose](command:frank.startDockerCompose)"
       }
     ]

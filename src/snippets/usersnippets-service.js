@@ -36,9 +36,9 @@ class UserSnippetsService {
         const userSnippetsStoragePath =  this.getUserSnippetsPath()
 
         try {
-            const userSnippetsExtension = JSON.parse(fs.readFileSync(userSnippetsStoragePath, 'utf8'));
+            const userSnippets = JSON.parse(fs.readFileSync(userSnippetsStoragePath, 'utf8'));
 
-            return userSnippetsExtension;
+            return userSnippets;
         } catch (err) {
             console.error(err);
             return {};
@@ -55,7 +55,7 @@ class UserSnippetsService {
         }
     }
 
-    async addUserSnippet(userSnippetsTreeProvider) {
+    async addNewUserSnippet(userSnippetsTreeProvider) {
         const editor = vscode.window.activeTextEditor;
     
         if (!editor) {
@@ -65,38 +65,38 @@ class UserSnippetsService {
         const selection = editor.selection;
         const body = editor.document.getText(selection);
     
-        const name = await vscode.window.showInputBox({
-            placeHolder: 'Give your new snippet a name',
-            prompt: "Name is required",
+        const category = await vscode.window.showInputBox({
+            placeHolder: 'Give a name for the category of your new snippet.',
+            prompt: "Category is required",
             validateInput: (value) => {
                 if (!value || value.trim() === "") {
-                    return "Name cannot be empty";
+                    return "Category cannot be empty";
                 }
                 return null;
             }
         });
     
-        if (!name) {
+        if (!category) {
             return;
         }
     
         try {
             const userSnippets = this.getUserSnippets();
 
-            let snippetsByName = userSnippets[name];
+            let snippetsByCategory = userSnippets[category];
 
-            if (snippetsByName === undefined) {
-                snippetsByName = [];
+            if (snippetsByCategory === undefined) {
+                snippetsByCategory = [];
             }
     
             const newSnippetBody = {
-                "prefix": name,
+                "prefix": category,
                 "body": body,
-                "description": name
+                "description": category
             };
 
-            snippetsByName.push(newSnippetBody);
-            userSnippets[name] = snippetsByName;
+            snippetsByCategory.push(newSnippetBody);
+            userSnippets[category] = snippetsByCategory;
     
             this.setUserSnippets(userSnippets);
 
@@ -107,11 +107,11 @@ class UserSnippetsService {
         }
     }
 
-    deleteUserSnippet(name, snippetIndex) {
+    deleteUserSnippet(category, snippetIndex) {
         try {
             const userSnippets = this.getUserSnippets();
 
-            userSnippets[name].splice(snippetIndex, 1);
+            userSnippets[category].splice(snippetIndex, 1);
 
             this.setUserSnippets(userSnippets);
         } catch (err) {
@@ -119,11 +119,11 @@ class UserSnippetsService {
         }
     }
 
-    deleteAllUserSnippetByName(name) {
+    deleteAllUserSnippetByCategory(category) {
         try {
             const userSnippets = this.getUserSnippets();
 
-            delete userSnippets[name];
+            delete userSnippets[category];
 
             this.setUserSnippets(userSnippets);
         } catch (err) {
@@ -131,19 +131,19 @@ class UserSnippetsService {
         }
     }
 
-    changeNameOfUserSnippets(oldName, name) {
+    changeCategoryOfUserSnippets(oldCategory, category) {
         const userSnippets = this.getUserSnippets();
 
-        if (Object.keys(userSnippets).includes(name)) {
+        if (Object.keys(userSnippets).includes(category)) {
             vscode.window.showErrorMessage("error");
             return;
         }
 
-        if (oldName != name) {
+        if (oldCategory != category) {
             try {
-                userSnippets[name] = userSnippets[oldName];
+                userSnippets[category] = userSnippets[oldCategory];
 
-                delete userSnippets[oldName];
+                delete userSnippets[oldCategory];
 
                 this.setUserSnippets(userSnippets);
             } catch (err) {
@@ -152,25 +152,25 @@ class UserSnippetsService {
         }
     }
 
-    async addNameOfUserSnippets(userSnippetsTreeProvider) {
+    async addNewCategoryOfUserSnippets(userSnippetsTreeProvider) {
         const userSnippets = this.getUserSnippets();
 
-        const name = await vscode.window.showInputBox({
-            placeHolder: 'Give a name',
-            prompt: "Name is required",
+        const category = await vscode.window.showInputBox({
+            placeHolder: 'Give your new category a name',
+            prompt: "Category is required",
             validateInput: (value) => {
                 if (!value || value.trim() === "") {
-                    return "Name cannot be empty";
+                    return "Category cannot be empty";
                 }
                 return null;
             }
         });
     
-        if (!name) {
+        if (!category) {
             return;
         }
 
-        userSnippets[name] = [];
+        userSnippets[category] = [];
 
         this.setUserSnippets(userSnippets);
 
@@ -178,10 +178,10 @@ class UserSnippetsService {
         userSnippetsTreeProvider.refresh();
     }
 
-    async uploadUserSnippet(name) {    
+    async uploadUserSnippet(category) {    
         const storagePath = this.context.globalStorageUri.fsPath;
         const targetDir = path.join(storagePath, "test");
-        const targetPath = path.join(targetDir, `${name}.md`)
+        const targetPath = path.join(targetDir, `${category}.md`)
 
         try {
             exec(`git reset --hard`, { cwd: targetDir}, (err) => {
@@ -193,7 +193,7 @@ class UserSnippetsService {
                             return;
                         }
                 
-                        const newFileText = "Replace all text in this file with your content.\n\nPlease make sure you use the right format:\n````xml\n<example>\n\t<example>\n<example>\n```\n\nSave to add this file as a page to the Frank!Framework Wiki.";
+                        const newFileText = "Replace all text in this file with your content.\n\nPlease make sure you use the right format:\n````xml\n<example/>\n\t<example>\n</example>\n```\n\nSave to add this file as a page to the Frank!Framework Wiki.";
 
                         if (!fs.existsSync(targetPath)) {
                             const choice = await vscode.window.showInformationMessage(
@@ -223,7 +223,7 @@ class UserSnippetsService {
                                         vscode.window.showErrorMessage("error");
                                         return;
                                     }
-                                    exec(`git commit -m "Updated ${name}.md"`, { cwd: targetDir }, (err) => {
+                                    exec(`git commit -m "Updated ${category}.md"`, { cwd: targetDir }, (err) => {
                                         if (err) {
                                             console.log(err);
                                             vscode.window.showErrorMessage("error");
@@ -282,8 +282,8 @@ class UserSnippetsService {
 
             for (const file of files) {
                 const filePath = path.join(targetDir, file);
-                const name = file.replace(/.md|.asciidoc/g, "");
-                const snippetsPerFile= [];
+                const category = file.replace(/.md|.asciidoc/g, "");
+                const snippetsPerFile = [];
                 
                 try {
                     const content = fs.readFileSync(filePath, 'utf8');
@@ -298,15 +298,15 @@ class UserSnippetsService {
                             const prettyBody = this.prettifyXml(decodedBody);
 
                             const snippet = {
-                                "prefix": name,
+                                "prefix": category,
                                 "body": prettyBody,
-                                "description": name
+                                "description": category
                             }
 
                             snippetsPerFile.push(snippet)
                         }
                     }
-                    snippets[name] = snippetsPerFile;
+                    snippets[category] = snippetsPerFile;
                 } catch (err) {
                     console.log(err);
                 }

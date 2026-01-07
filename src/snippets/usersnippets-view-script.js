@@ -3,7 +3,7 @@ const vscode = acquireVsCodeApi();
 const container = document.getElementById("snippetsContainer");
 
 function getSnippetIndexFromCard(snippetCard) {
-    return [...snippetsPerNameContainer.children].indexOf(snippetCard);
+    return [...snippetsPerCategoryContainer.children].indexOf(snippetCard);
 }
 
 function addSnippetCard(snippet) {
@@ -155,38 +155,38 @@ function addSnippetCard(snippet) {
 const header = document.createElement("div");
 header.className = "header";
 
-let editingName = false;
+let editingCategory = false;
 
-const snippetNameContainer = document.createElement("div");
-snippetNameContainer.className = "snippetNameContainer";
+const snippetCategoryContainer = document.createElement("div");
+snippetCategoryContainer.className = "snippetCategoryContainer";
 
-const snippetName = document.createElement("textarea");
-snippetName.className = "snippetName";
-snippetName.value = name;
-snippetName.readOnly = !editingName;
+const snippetCategory = document.createElement("textarea");
+snippetCategory.className = "snippetCategory";
+snippetCategory.value = category;
+snippetCategory.readOnly = !editingCategory;
 
-snippetNameContainer.appendChild(snippetName);
+snippetCategoryContainer.appendChild(snippetCategory);
 
 const editIcon = document.createElement("i");
 editIcon.className = "codicon codicon-edit";
-editIcon.title = "Change name";
+editIcon.title = "Change category";
 
 editIcon.addEventListener("click", () => {
-    editingName = !editingName;
+    editingCategory = !editingCategory;
 
-    snippetName.readOnly = !editingName;
+    snippetCategory.readOnly = !editingCategory;
  
-    editIcon.className = editingName ? "codicon codicon-save" : "codicon codicon-edit";
+    editIcon.className = editingCategory ? "codicon codicon-save" : "codicon codicon-edit";
 
-    if (!editingName) {
+    if (!editingCategory) {
         vscode.postMessage({
-            command: "changeNameOfUserSnippets",
-            newName: snippetName.value
+            command: "changeCategoryOfUserSnippets",
+            category: snippetCategory.value
         });
     }
 });
 
-snippetNameContainer.appendChild(editIcon);
+snippetCategoryContainer.appendChild(editIcon);
 
 const contributeButton = document.createElement("button");
 contributeButton.className = "contributeButton";
@@ -202,11 +202,11 @@ contributeButton.appendChild(exportIcon);
 contributeButton.addEventListener("click", () => {
     vscode.postMessage({
         command: "exportUserSnippets",
-        name: name
+        category: category
     });
 });
 
-header.appendChild(snippetNameContainer);
+header.appendChild(snippetCategoryContainer);
 header.appendChild(contributeButton);
 
 container.appendChild(header);
@@ -298,7 +298,7 @@ addIcon.addEventListener("click", () => {
 
         safeUserSnippets.push(snippet);   
 
-        snippetsPerNameContainer.appendChild(addSnippetCard(snippet, newIndex));
+        snippetsPerCategoryContainer.appendChild(addSnippetCard(snippet, newIndex));
 
         vscode.postMessage({
             command: "addSnippet",
@@ -313,13 +313,13 @@ const divider = document.createElement("div");
 divider.className = "snippetDivider";
 container.appendChild(divider);
 
-const snippetsPerNameContainer = document.createElement("div");
-snippetsPerNameContainer.className = "snippetsPerNameContainer";
+const snippetsPerCategoryContainer = document.createElement("div");
+snippetsPerCategoryContainer.className = "snippetsPerCategoryContainer";
 
 safeUserSnippets.forEach((snippet) => {
     let snippetCard = addSnippetCard(snippet);
 
-    snippetsPerNameContainer.appendChild(snippetCard);
+    snippetsPerCategoryContainer.appendChild(snippetCard);
 });
 
-container.appendChild(snippetsPerNameContainer);
+container.appendChild(snippetsPerCategoryContainer);
