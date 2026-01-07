@@ -3,7 +3,7 @@
   "publisher": "wearefrank",
   "displayName": "Frank!Framework",
   "description": "A plugin to help users with the development of their Frank!Framework integrations!",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.107.0"
   },
