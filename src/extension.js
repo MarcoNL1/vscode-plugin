@@ -68,7 +68,7 @@ function activate(context) {
 
 		skeletonrcJSON.mappings = mappings;
 
-		fs.writeFileSync(skeletonrcJSONPath, JSON.stringify(content, null, 2));
+		fs.writeFileSync(skeletonrcJSONPath, JSON.stringify(skeletonrcJSON, null, 2));
     
 		await execAsync(
             `powershell -Command "Remove-Item -Path '.git' -Recurse -Force"`,
