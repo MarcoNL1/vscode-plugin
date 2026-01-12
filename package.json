@@ -59,6 +59,16 @@
           "command": "frank.deleteAllUserSnippetByCategory",
           "when": "view == userSnippetsTreeview && viewItem == categoryTreeItem",
           "group": "inline"
+        },
+        {
+          "command": "frank.startCurrent",
+          "when": "view == startTreeView && viewItem == startTreeItem",
+          "group": "inline"
+        },
+        {
+          "command": "frank.startProject",
+          "when": "view == startTreeView && viewItem == projectTreeItem",
+          "group": "inline"
         }
       ]
     },
@@ -106,6 +116,16 @@
         "command": "frank.addNewCategoryOfUserSnippets",
         "title": "Add a New Category",
         "icon": "$(add)"
+      },
+      {
+        "command": "frank.startCurrent",
+        "title": "Run Current Project",
+        "icon": "$(play)"
+      },
+      {
+        "command": "frank.startProject",
+        "title": "Run Project",
+        "icon": "$(play)"
       }
     ],
     "viewsContainers": {
@@ -140,7 +160,7 @@
       ],
       "explorer": [
         {
-          "id": "startView",
+          "id": "startTreeView",
           "name": "Start!"
         },
         {
@@ -161,10 +181,6 @@
       {
         "view": "adapterView",
         "contents": "[Create an Adapter](command:frank.addNewAdapter)"
-      },
-      {
-        "view": "startView",
-        "contents": "[Start](command:frank.startAnt)\n[Start With Docker](command:frank.startDocker)\n[Start With Docker Compose](command:frank.startDockerCompose)"
       }
     ]
   },

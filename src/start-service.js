@@ -2,9 +2,24 @@ const vscode = require("vscode");
 const fs = require('fs');
 const path = require('path');
 
+const { ProjectTreeItem } = require("./start/start-tree-provider.js");
+
 class StartService {
     constructor(context) {
         this.context = context;
+    }
+
+    ensureRanProjectsFileExists() {
+        const storageDir = this.context.globalStorageUri.fsPath;
+        const ranProjectsPath = path.join(storageDir, 'ranProjects.json');
+
+        if (!fs.existsSync(storageDir)) {
+            fs.mkdirSync(storageDir, { recursive: true });
+        }
+
+        if (!fs.existsSync(ranProjectsPath)) {
+            fs.writeFileSync(ranProjectsPath, "{}", "utf8");
+        }
     }
 
     async createFile(workspaceRoot, file) {
@@ -92,20 +107,69 @@ class StartService {
         }
     }
 
-    async startWithAnt() {
-        const editor = vscode.window.activeTextEditor;
+    async saveRanProject(method, workingDir) {
+        const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
 
+        const ranProjects = fs.readFileSync(ranProjectsPath, 'utf8');
+        let ranProjectJSON = JSON.parse(ranProjects);
+
+        const newRanProjectBody = {
+            project: path.basename(workingDir),
+            path: workingDir
+        };
+
+        const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showErrorMessage("No active editor");
             return;
         }
 
-        const workingDir = await this.getWorkingDirectory("build.xml");
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+        if (!workspaceFolder) return;
+
+        const workspaceRootBasename = path.basename(workspaceFolder.uri.fsPath);
+
+        if (!ranProjectJSON[workspaceRootBasename]) {
+            ranProjectJSON[workspaceRootBasename] = [{}];
+        }
+
+        const workspaceEntry = ranProjectJSON[workspaceRootBasename][0];
+
+        if (!Array.isArray(workspaceEntry[method])) {
+            workspaceEntry[method] = [];
+        }
+
+        const exists = workspaceEntry[method].some(
+            ({ project, path }) =>
+                project === newRanProjectBody.project &&
+                path === newRanProjectBody.path
+        );
+
+        if (!exists) {
+            workspaceEntry[method].push(newRanProjectBody);
+        }
+
+        fs.writeFileSync(ranProjectsPath,JSON.stringify(ranProjectJSON, null, 4), "utf8");
+    }
+
+    async startWithAnt(workingDir) {
+        if (workingDir == null) {
+            const editor = vscode.window.activeTextEditor;
+
+            if (!editor) {
+                vscode.window.showErrorMessage("No active editor");
+                return;
+            }
+
+            workingDir = await this.getWorkingDirectory("build.xml");
+
+            
+        }
 
         if (!workingDir) {
             return;
         }
-
+        
         const term = vscode.window.createTerminal("Frank Ant");
 
         term.show();
@@ -117,17 +181,21 @@ class StartService {
         } else {
             term.sendText(`../frank-runner/ant.bat`);
         }
+
+        await this.saveRanProject("ant", workingDir);
     }
 
-    async startWithDocker() {
-        const editor = vscode.window.activeTextEditor;
+    async startWithDocker(workingDir) {
+        if (workingDir == null) {
+            const editor = vscode.window.activeTextEditor;
 
-        if (!editor) {
-            vscode.window.showErrorMessage("No active editor");
-            return;
+            if (!editor) {
+                vscode.window.showErrorMessage("No active editor");
+                return;
+            }
+
+            workingDir = await this.getWorkingDirectory("Dockerfile");
         }
-
-        const workingDir = await this.getWorkingDirectory("Dockerfile");
 
         if (!workingDir) {
             return;
@@ -142,18 +210,22 @@ class StartService {
         term.sendText(`docker build -t ${projectName} .`);
         term.sendText(`docker rm ${projectName}-container`);
         term.sendText(`docker run --name ${projectName}-container ${projectName}`);
+        
+        await this.saveRanProject("docker", workingDir);
     }
 
-    async startWithDockerCompose() {
-        const editor = vscode.window.activeTextEditor;
+    async startWithDockerCompose(workingDir) {
+        if (workingDir == null) {
+            const editor = vscode.window.activeTextEditor;
 
-        if (!editor) {
-            vscode.window.showErrorMessage("No active editor");
-            return;
+            if (!editor) {
+                vscode.window.showErrorMessage("No active editor");
+                return;
+            }
+
+            workingDir = await this.getWorkingDirectory("compose.frank.loc.yaml");
         }
 
-        const workingDir = await this.getWorkingDirectory("compose.frank.loc.yaml");
-        
         if (!workingDir) {
             return;
         }
@@ -163,6 +235,8 @@ class StartService {
     
         term.sendText(`cd "${workingDir}"`);
         term.sendText('docker compose -f compose.frank.loc.yaml up --build');
+
+        await this.saveRanProject("dockerCompose", workingDir);
     }
 }
 

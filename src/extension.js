@@ -10,6 +10,7 @@ const { showSnippetsView } = require('./snippets/usersnippets-view.js');
 const FrankFlowViewProvider = require('./flow/flow-view-provider.js');
 const { UserSnippetsTreeProvider } = require("./snippets/usersnippets-tree-provider.js");
 const { UserSnippetsDndController } = require("./snippets/usersnippets-dnd-controller.js")
+const { StartTreeProvider } = require("./start/start-tree-provider.js");
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -23,6 +24,7 @@ function activate(context) {
 	const userSnippetsTreeProvider = new UserSnippetsTreeProvider(context, userSnippetsService);
 	const userSnippetsDndController = new UserSnippetsDndController(context, userSnippetsTreeProvider, userSnippetsService);
 	const startService = new StartService(context);
+	const startTreeProvider = new StartTreeProvider(context, startService);
 
 	vscode.commands.registerCommand('frank.createNewFrank', async function () {
         const projectName = await vscode.window.showInputBox({
@@ -81,14 +83,41 @@ function activate(context) {
         );
 	});
 
+	function startHandler(item) {
+		switch (item.method) {
+			case "ant":
+				startService.startWithAnt(item.path);
+				break;
+			case "docker":
+				startService.startWithDocker(item.path);
+				break;
+			case "dockerCompose":
+				startService.startWithDockerCompose(item.path);
+				break;
+		}
+
+		startTreeProvider.rebuild();
+        startTreeProvider.refresh();
+	};
+	vscode.commands.registerCommand("frank.startCurrent", async function (item) { startHandler(item) });
+	vscode.commands.registerCommand("frank.startProject", async function (item) { startHandler(item) });
 	vscode.commands.registerCommand('frank.startAnt', async function () {
 		startService.startWithAnt();
+
+		startTreeProvider.rebuild();
+        startTreeProvider.refresh();
 	});
 	vscode.commands.registerCommand('frank.startDocker', async function () {
 		startService.startWithDocker();
+
+		startTreeProvider.rebuild();
+        startTreeProvider.refresh();
 	});
 	vscode.commands.registerCommand('frank.startDockerCompose', async function () {
 		startService.startWithDockerCompose();
+
+		startTreeProvider.rebuild();
+        startTreeProvider.refresh();
 	});
 
 	vscode.commands.registerCommand('frank.addNewAdapter', async function () {
@@ -127,6 +156,10 @@ function activate(context) {
 	}
 	focusFrankFlowView();
 
+	vscode.window.createTreeView("startTreeView", {
+		treeDataProvider: startTreeProvider
+	});
+
 	//Init user snippets tree view
 	vscode.window.createTreeView("userSnippetsTreeview", {
 		treeDataProvider: userSnippetsTreeProvider,
@@ -134,7 +167,7 @@ function activate(context) {
 	});
 	vscode.commands.registerCommand('frank.addNewCategoryOfUserSnippets', () => {
 		userSnippetsService.addNewCategoryOfUserSnippets(userSnippetsTreeProvider);
-	})
+	});
 	vscode.commands.registerCommand("frank.deleteAllUserSnippetByCategory", (item) => {
 		const userSnippets = userSnippetsService.deleteAllUserSnippetByCategory(item.label);
 
