@@ -149,7 +149,7 @@ class StartService {
             workspaceEntry[method].push(newRanProjectBody);
         }
 
-        fs.writeFileSync(ranProjectsPath,JSON.stringify(ranProjectJSON, null, 4), "utf8");
+        fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectJSON, null, 4), "utf8");
     }
 
     async startWithAnt(workingDir) {
@@ -162,8 +162,6 @@ class StartService {
             }
 
             workingDir = await this.getWorkingDirectory("build.xml");
-
-            
         }
 
         if (!workingDir) {
@@ -201,7 +199,7 @@ class StartService {
             return;
         }
 
-        const projectName = path.basename(path.dirname(workingDir));
+        const projectName = path.basename(workingDir);
 
         var term = vscode.window.createTerminal('cmd');
         term.show();
