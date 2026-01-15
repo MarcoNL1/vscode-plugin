@@ -41,19 +41,19 @@ class StartTreeProvider {
         let existingProjectsDockerCompose = [];
 
         for (let folder of workspaceFolders) {
-            if (ranProjectJSON.hasOwnProperty(folder.name)) {
-                if (ranProjectJSON[folder.name][0].hasOwnProperty("ant")) {
-                    let existingProjectAnt = ranProjectJSON[folder.name][0].ant;
+            if (ranProjectJSON.hasOwnProperty(folder.uri.fsPath)) {
+                if (ranProjectJSON[folder.uri.fsPath][0].hasOwnProperty("ant")) {
+                    let existingProjectAnt = ranProjectJSON[folder.uri.fsPath][0].ant;
                     existingProjectsAnt.push(...existingProjectAnt);
                 }
                 
-                if (ranProjectJSON[folder.name][0].hasOwnProperty("docker")) {
-                    let existingProjectDocker = ranProjectJSON[folder.name][0].docker;
+                if (ranProjectJSON[folder.uri.fsPath][0].hasOwnProperty("docker")) {
+                    let existingProjectDocker = ranProjectJSON[folder.uri.fsPath][0].docker;
                     existingProjectsDocker.push(...existingProjectDocker);
                 }
 
-                if (ranProjectJSON[folder.name][0].hasOwnProperty("dockerCompose")) {
-                    let existingProjectDockerCompose = ranProjectJSON[folder.name][0].dockerCompose;
+                if (ranProjectJSON[folder.uri.fsPath][0].hasOwnProperty("dockerCompose")) {
+                    let existingProjectDockerCompose = ranProjectJSON[folder.uri.fsPath][0].dockerCompose;
                     existingProjectsDockerCompose.push(...existingProjectDockerCompose);
                 }
             }

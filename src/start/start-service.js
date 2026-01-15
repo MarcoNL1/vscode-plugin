@@ -126,7 +126,7 @@ class StartService {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
         if (!workspaceFolder) return;
 
-        const workspaceRootBasename = path.basename(workspaceFolder.uri.fsPath);
+        const workspaceRootBasename = workspaceFolder.uri.fsPath;
 
         if (!ranProjectJSON[workspaceRootBasename]) {
             ranProjectJSON[workspaceRootBasename] = [{}];
