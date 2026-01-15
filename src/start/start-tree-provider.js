@@ -59,9 +59,11 @@ class StartTreeProvider {
             }
         }
 
-        let project = await this.startService.getWorkingDirectory("build.xml");
+        let project = this.findProjectRoot();
         if (project != undefined) {
             project = path.basename(project);
+        } else {
+            project = "No Current Project"
         }
 
         const antTreeItem = new StartTreeItem(`Start with Ant (${project})`, existingProjectsAnt, "ant", vscode.TreeItemCollapsibleState.Expanded);
@@ -80,6 +82,35 @@ class StartTreeProvider {
             return snippet.getProjectTreeItems();
         } else {
             return this.startTreeItems;
+        }
+    }
+
+    findProjectRoot() {
+        const editor = vscode.window.activeTextEditor;
+
+        if (!editor) {
+            return;
+        }
+        
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+            editor.document.uri
+        );
+
+        const workspaceRoot = workspaceFolder.uri.fsPath;
+
+        let currentDir = path.dirname(editor.document.uri.fsPath);
+
+        while (true) {
+            if (fs.existsSync(path.join(currentDir, "build.xml"))) {
+                return currentDir;
+            }
+
+            const parentDir = path.dirname(currentDir);
+            if (currentDir === workspaceRoot) {
+                return undefined;
+            }
+
+            currentDir = parentDir;
         }
     }
 }
