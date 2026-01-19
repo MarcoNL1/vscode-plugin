@@ -81,12 +81,12 @@ class StartTreeItem extends vscode.TreeItem {
         this.projects = projects;
         this.method = method;
         this.projectTreeItems = [];
-        this.contextValue = `startTreeItem-${method}`;
+        this.contextValue = `startTreeItem`;
 
-        this.convertSnippetToSnippetTreeItems();
+        this.convertProjectToProjectTreeItems();
     }
 
-    convertSnippetToSnippetTreeItems() {
+    convertProjectToProjectTreeItems() {
         const arr = [];
 
         this.projects.forEach((project) => {
@@ -110,7 +110,32 @@ class ProjectTreeItem extends vscode.TreeItem {
         super(project);
         this.path = path;
         this.method = method;
-        this.contextValue = "projectTreeItem";
+        this.contextValue = `projectTreeItem-${method}`;
+
+        if (method === "ant") {
+            this.doUpdate = this.ffVersionSet();
+
+            this.iconPath = new vscode.ThemeIcon(
+                this.doUpdate ? 'sync' : 'sync-ignored'
+            );
+
+            this.description = this.doUpdate
+                ? `Using Highest Online FF! Version`
+                : `Using Highest Local FF! Version (Download Disabled)`;
+        }
+    }
+
+    ffVersionSet() {
+        const frankRunnerPropertiesFile = path.join(this.path, "frank-runner.properties");
+
+        if (!fs.existsSync(frankRunnerPropertiesFile)) {
+            return true;
+        }
+        let frankRunnerProperties = fs.readFileSync(frankRunnerPropertiesFile, "utf8");
+
+        const hasActiveFFVersion = /^\s*ff\.version=.*$/m.test(frankRunnerProperties);
+
+        return hasActiveFFVersion;
     }
 }
 

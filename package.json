@@ -161,7 +161,7 @@
         },
         {
           "command": "frank.startCurrent",
-          "when": "view == startTreeView && (viewItem == startTreeItem-ant || viewItem == startTreeItem-docker || viewItem == startTreeItem-dockerCompose)",
+          "when": "view == startTreeView && (viewItem == startTreeItem)",
           "group": "inline@2"
         },
         {
@@ -170,14 +170,9 @@
           "group": "inline@2"
         },
         {
-          "command": "frank.toggleUpdateOn",
-          "when": "view == startTreeView && viewItem == startTreeItem-ant && !frank.updateEnabled",
-          "group": "inline"
-        },
-        {
-          "command": "frank.toggleUpdateOff",
-          "when": "view == startTreeView && viewItem == startTreeItem-ant && frank.updateEnabled",
-          "group": "inline"
+          "command": "frank.toggleUpdate",
+          "when": "view == startTreeView && viewItem == projectTreeItem-ant",
+          "group": "navigation"
         }
       ]
     },
@@ -237,13 +232,8 @@
         "icon": "$(play)"
       },
       {
-        "command": "frank.toggleUpdateOn",
-        "title": "Use Highest Online Version",
-        "icon": "$(sync-ignored)"
-      },
-      {
-        "command": "frank.toggleUpdateOff",
-        "title": "Use Highest Local Version (Download Disabled)",
+        "command": "frank.toggleUpdate",
+        "title": "Toggle FF! Update",
         "icon": "$(sync)"
       }
     ],

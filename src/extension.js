@@ -83,18 +83,6 @@ function activate(context) {
         );
 	});
 
-	if (context.globalState.get('frank.updateEnabled') === undefined) {
-		context.globalState.update('frank.updateEnabled', true);
-	}
-	vscode.commands.executeCommand('setContext', 'frank.updateEnabled', context.globalState.get('frank.updateEnabled'));
-	function toggleUpdate() {
-		context.globalState.update('frank.updateEnabled', !context.globalState.get('frank.updateEnabled'));
-
-		vscode.commands.executeCommand('setContext', 'frank.updateEnabled', context.globalState.get('frank.updateEnabled'));
-	}
-    vscode.commands.registerCommand('frank.toggleUpdateOn', function () { toggleUpdate() });
-    vscode.commands.registerCommand('frank.toggleUpdateOff', function () { toggleUpdate() });
-
 	function startHandler(item) {
 		switch (item.method) {
 			case "ant":
@@ -121,7 +109,7 @@ function activate(context) {
 	});
 	vscode.commands.registerCommand('frank.startDocker', async function () {
 		startService.startWithDocker();
-
+		
 		startTreeProvider.rebuild();
         startTreeProvider.refresh();
 	});
@@ -176,14 +164,25 @@ function activate(context) {
 		setStartTreeViewDescription();
 	});
 	async function setStartTreeViewDescription() {
-		const projectName = path.basename(await startService.getWorkingDirectory());
-		console.log(projectName);
-		if (projectName != undefined) {
-			startTreeView.description = path.basename(await startService.getWorkingDirectory());
+		const project = await startService.getWorkingDirectory();
+		let projectName = "";
+
+		if (project != undefined) {
+			startTreeView.description = path.basename(project);
 		} else {
-			startTreeView.description = "No Runable File Found";
+			startTreeView.description = "No Project Open in Editor/No Runable File Found";
 		}
 	}
+	vscode.commands.registerCommand("frank.toggleUpdate", async (item) => {
+		if (!item || item.method !== "ant") {
+			return;
+		}
+
+		startService.toggleUpdate(item.path);
+
+		startTreeProvider.rebuild();
+    	startTreeProvider.refresh();
+	});
 
 	//Init user snippets tree view
 	vscode.window.createTreeView("userSnippetsTreeview", {

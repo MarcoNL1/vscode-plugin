@@ -176,43 +176,57 @@ class StartService {
         }
     }
 
-    updateOrNot(workingDir) {
-        if (this.context.globalState.get('frank.updateEnabled')){
-            if (fs.existsSync(path.join(workingDir, "frank-runner.properties"))) {
-                let frankRunnerProperties = fs.readFileSync(path.join(workingDir, "frank-runner.properties"), 'utf8');
+    toggleUpdate(workingDir) {
+        const frankRunnerPropertiesFile = path.join(workingDir, "frank-runner.properties");
 
-                frankRunnerProperties = frankRunnerProperties.replace(/ff\.version=.*/, "");
+        if (fs.existsSync(frankRunnerPropertiesFile)) {
+            let frankRunnerProperties = fs.readFileSync(frankRunnerPropertiesFile, "utf8");
 
-                fs.writeFileSync(path.join(workingDir, "frank-runner.properties"), frankRunnerProperties, "utf8");
+            const hasActiveFFVersion = /^\s*ff\.version=.*$/m.test(frankRunnerProperties);
+
+            if (hasActiveFFVersion) {
+                frankRunnerProperties = frankRunnerProperties
+                .replace(/^\s*ff\.version=.*$/gm, "")
+                .trim();
+
+                fs.writeFileSync(frankRunnerPropertiesFile, frankRunnerProperties, "utf8");
+                return;
+            } else {
+                const ffVersion = this.getLocalFFVersion(workingDir);
+                if (!ffVersion) return;
+
+                const newLine = `ff.version=${ffVersion}`;
+
+                if (fs.existsSync(frankRunnerPropertiesFile)) {
+                    fs.appendFileSync(frankRunnerPropertiesFile, "\n" + newLine, "utf8");
+                } 
             }
         } else {
-            let  frankFrameworkFiles = [];
+            const ffVersion = this.getLocalFFVersion(workingDir);
+            if (!ffVersion) return;
 
-            if (workingDir.includes('frank-runner\\examples')) {
-                frankFrameworkFiles = fs.readdirSync(path.join(workingDir, "../../download")).filter(this.isFrameworkFile);
-            } else {
-                frankFrameworkFiles = fs.readdirSync(path.join(workingDir, "../frank-runner/download")).filter(this.isFrameworkFile);
-            }
-
-            if (frankFrameworkFiles.lentgh > 0){
-                const ffVersion = frankFrameworkFiles[0].split("-")[2] + "-" + frankFrameworkFile[0].split("-")[3];
-            }
-
-            const match = frankFrameworkFiles[0].match(/(\d+(?:\.\d+)*-\d+\.\d+)\.war$/);
-            const ffVersion = match?.[1];
-
-            if (fs.existsSync(path.join(workingDir, "frank-runner.properties"))) {
-                const frankRunnerProperties = fs.readFileSync(path.join(workingDir, "frank-runner.properties"), 'utf8');
-
-                const ffVersionSet = frankRunnerProperties.search(/ff\.version=.*/);
-
-                if (ffVersionSet === -1) {
-                    fs.appendFileSync(path.join(workingDir, "frank-runner.properties"), "\nff.version=" + ffVersion, "utf8");
-                }
-            } else {
-                fs.writeFileSync(path.join(workingDir, "frank-runner.properties"), "ff.version=" + ffVersion, "utf8");
-            }
+            const newLine = `ff.version=${ffVersion}`;
+            
+            fs.writeFileSync(frankRunnerPropertiesFile, newLine, "utf8");
         }
+    }
+
+    getLocalFFVersion(workingDir) {
+        let downloadDir;
+
+        if (workingDir.includes("frank-runner\\examples")) {
+            downloadDir = path.join(workingDir, "../../download");
+        } else {
+            downloadDir = path.join(workingDir, "../frank-runner/download");
+        }
+
+        if (!fs.existsSync(downloadDir)) return null;
+
+        const files = fs.readdirSync(downloadDir)
+            .filter(f => f.match(/frankframework.*\.war$/));
+
+        const match = files[0]?.match(/(\d+(?:\.\d+)*-\d+\.\d+)/);
+        return match?.[1] ?? null;
     }
 
     async startWithAnt(workingDir) {
@@ -230,8 +244,6 @@ class StartService {
         if (!workingDir) {
             return;
         }
-
-        this.updateOrNot(workingDir);
         
         const term = vscode.window.createTerminal("Frank Ant");
 
