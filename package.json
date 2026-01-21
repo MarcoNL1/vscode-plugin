@@ -33,7 +33,7 @@
           {
             "id": "start",
             "title": "Run Your Project",
-            "description": "Run your project using Ant, Docker, or Docker Compose from the Start! view in the Explorer. At the top you'll see the current project, choose your start method and hover over it to reveal the button to run it.",
+            "description": "Run your project using Ant, Docker, or Docker Compose from the Frank!Start view in the Explorer. At the top you'll see the current project, choose your start method and hover over it to reveal the button to run it.",
             "media": {
               "image": "resources/images/start.png",
               "altText": "Run a Frank Project"
@@ -42,7 +42,7 @@
           {
             "id": "start1",
             "title": "Run Previous Projects Again",
-            "description": "Previously run projects are saved so you can easily start them again from the Start! view.",
+            "description": "Previously run projects are saved so you can easily start them again from the Frank!Start view.",
             "media": {
               "image": "resources/images/start1.png",
               "altText": "Previously Run Projects"
@@ -51,7 +51,7 @@
           {
             "id": "start2",
             "title": "Run with Ant and Toggle FF! Update",
-            "description": "When running a project with Ant, you can choose which version of FF! the Frank!Runner uses: either the highest version available online or the highest version installed locally. Right-click on a project in the Start! view to toggle.",
+            "description": "When running a project with Ant, you can choose which version of FF! the Frank!Runner uses: either the highest version available online or the highest version installed locally. Right-click on a project in the Frank!Start view to toggle.",
             "media": {
               "image": "resources/images/toggle.png",
               "altText": "Toggle FF! Update"
@@ -69,7 +69,7 @@
           {
             "id": "newAdapter",
             "title": "Add an Adapter to Your Configuration",
-            "description": "In the Explorer, open the Adapters! view and click “Add Adapter”. Choose an adapter type from the list and it will be inserted into the file currently open in your editor.",
+            "description": "In the Explorer, open the Frank!Adapters view and click “Add Adapter”. Choose an adapter type from the list and it will be inserted into the file currently open in your editor.",
             "media": {
               "image": "resources/images/newadapter.png",
               "altText": "Create a New Adapter"
@@ -96,7 +96,7 @@
           {
             "id": "viewUserSnippets",
             "title": "View Your Snippets",
-            "description": "Your custom snippets appear in the Frank! Snippets view in the Explorer. Snippets are grouped by name, and each group can contain multiple snippets.",
+            "description": "Available snippets are shown in the Frank!Snippets view in the Explorer. Snippets are grouped into your custom snippets and snippets from the Frank!Framework wiki. Within each group, snippets are further organized by name, and each group can contain multiple snippets. Click a snippet to insert it into your editor.",
             "media": {
               "image": "resources/images/viewsnippets.png",
               "altText": "Frank Snippets view in the Explorer"
@@ -104,11 +104,11 @@
           },
           {
             "id": "manageUserSnippets",
-            "title": "Manage and Edit Snippets",
-            "description": "Click a snippet or snippet group to open the management view. Here you can rename collections, edit snippet prefixes, descriptions, and content, add new snippets, or delete existing ones. If you want to share a snippet with others, use the button in the top right to submit it to the Frank!Framework Wiki.",
+            "title": "Manage and Edit User Snippets",
+            "description": "Click a custom snippet name to open the management view. Here you can rename collections, edit snippet prefixes, descriptions, and content, add new snippets, or delete existing ones. If you want to share a snippet with others, use the button in the top right to submit it to the Frank!Framework Wiki.",
             "media": {
               "image": "resources/images/managesnippets.png",
-              "altText": "Manage Frank snippets in the webview"
+              "altText": "Manage user snippets in the webview"
             }
           },
           {
