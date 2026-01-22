@@ -3,7 +3,7 @@
   "publisher": "wearefrank",
   "displayName": "Frank!Framework",
   "description": "A plugin to help users with the development of their Frank!Framework integrations!",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "engines": {
     "vscode": "^1.107.0"
   },
@@ -64,15 +64,6 @@
             "media": {
               "image": "resources/images/flow.png",
               "altText": "Flowchart Visualization"
-            }
-          },
-          {
-            "id": "newAdapter",
-            "title": "Add an Adapter to Your Configuration",
-            "description": "In the Explorer, open the Frank!Adapters view and click “Add Adapter”. Choose an adapter type from the list and it will be inserted into the file currently open in your editor.",
-            "media": {
-              "image": "resources/images/newadapter.png",
-              "altText": "Create a New Adapter"
             }
           },
           {
@@ -207,10 +198,6 @@
         "title": "Add Frank! Snippet"
       },
       {
-        "command": "frank.addNewAdapter",
-        "title": "Add a New Adapter"
-      },
-      {
         "command": "frank.editUserSnippet",
         "title": "Edit Snippet",
         "icon": "$(edit)"
@@ -288,10 +275,6 @@
           "name": "Frank!Start"
         },
         {
-          "id": "adapterView",
-          "name": "Frank!Adapter"
-        },
-        {
           "id": "snippetsTreeView",
           "name": "Frank!Snippets"
         }
@@ -300,11 +283,7 @@
     "viewsWelcome": [
       {
         "view": "welcomeView",
-        "contents": "Welcome to the Frank!Framework!\nThe Frank!Framework is an easy-to-use, stateless integration framework which allows (transactional) messages to be modified and exchanged between different systems.\n[Open a Frank](command:vscode.openFolder)\n[Create a Frank](command:frank.createNewFrank)"
-      },
-      {
-        "view": "adapterView",
-        "contents": "[Add Adapter](command:frank.addNewAdapter)"
+        "contents": "Welcome to the Frank!Framework!\nThe Frank!Framework is an easy-to-use, stateless integration framework which allows (transactional) messages to be modified and exchanged between different systems.\n[Open a Frank](command:vscode.openFolder)\n[Create a Frank](command:frank.createNewFrank)\nFor an introduction:\n [Open Walkthrough](command:frank.openWalkthrough)"
       }
     ]
   },

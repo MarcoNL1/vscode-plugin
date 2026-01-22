@@ -83,6 +83,15 @@ function activate(context) {
         );
 	});
 
+	vscode.commands.registerCommand("frank.openWalkthrough", () => {
+		console.log("opening frank walkthrough");
+		vscode.commands.executeCommand(
+			"workbench.action.openWalkthrough",
+			"wearefrank.wearefrank#introduction",
+			false
+		);
+	});
+
 	//Helper function for starting a project.
 	async function startHandler(item) {
 		switch (item.method) {
@@ -168,20 +177,6 @@ function activate(context) {
 		startTreeProvider.rebuild();
     	startTreeProvider.refresh();
 	});
-
-	vscode.commands.registerCommand('frank.addNewAdapter', async function () {
-		const adapter = await vscode.window.showQuickPick(
-			["Adapter 1", "Adapter 2", "Adapter 3", "Adapter 4"]
-		);
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			vscode.window.showErrorMessage("No active editor");
-		} else {
-			await editor.edit(editBuilder => {
-        		editBuilder.insert(editor.selection.active, adapter);
-    		});
-		}
-	})
 
 	//Load examples from the Frank!Framework Wiki as VS Code Snippets.
 	snippetsService.ensureSnippetsFilesExists();
