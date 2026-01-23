@@ -27,61 +27,102 @@ function activate(context) {
 	const startTreeProvider = new StartTreeProvider(context, startService);
 
 	vscode.commands.registerCommand('frank.createNewFrank', async function () {
-        const projectName = await vscode.window.showInputBox({
-            placeHolder: 'Give your project a projectName',
-            validateInput: (value) => {
-                if (!value || value.trim() === '') {
-                    return 'Name cannot be empty';
-                }
-                return null;
-            }
-        });
+		const items = [
+			{
+				label: 'Simple Frank'
+			},
+			{
+				label: 'Skeleton',
+				description: 'https://github.com/wearefrank/skeleton'
+			},
+			{
+				label: 'Project per Config',
+				description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-per-config'
+			},
+			{
+				label: 'Module per Config',
+				description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#module-per-config'
+			},
+			{
+				label: 'Monorepo',
+				description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#module-per-config-flattened-aka-monorepo'
+			},
+			{
+				label: 'Foks Monorepo',
+				description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#foks-monorepo'
+			}
+		];
+		const projectType = await vscode.window.showQuickPick(items, {placeholder: "Pick a project"});
+		if (projectType && projectType.description) {
+			vscode.env.openExternal(vscode.Uri.parse(projectType.description));
+		} else if (projectType.label === "Simple Frank") {
+			const projectName = await vscode.window.showInputBox({
+				placeHolder: 'Give your project a name',
+				validateInput: (value) => {
+					if (!value || value.trim() === '') {
+						return 'Name cannot be empty';
+					}
+					return null;
+				}
+			});
+			if (!projectName) {
+				return;
+			}
+			projectNameTrimmed = projectName.trim();
 
-        if (!projectName) {
-            return;
-        }
+			const configName = await vscode.window.showInputBox({
+				placeHolder: 'Give your configuration a name',
+				validateInput: (value) => {
+					if (!value || value.trim() === '') {
+						return 'Name cannot be empty';
+					}
+					return null;
+				}
+			});
+			if (!configName) {
+				return;
+			}
+			configNameTrimmed = configName.trim();
 
-        projectNameTrimmed = projectName.trim();
+			const workspaceFolders = vscode.workspace.workspaceFolders;
+			const rootPath = workspaceFolders[0].uri.fsPath;
 
-		const workspaceFolders = vscode.workspace.workspaceFolders;
-		const rootPath = workspaceFolders[0].uri.fsPath;
+			if (!fs.existsSync(path.join(rootPath, "frank-runner"))) {
+				await execAsync(
+					'git clone https://github.com/wearefrank/frank-runner.git',
+					rootPath
+				);
+			}
 
-		if (!fs.existsSync(path.join(rootPath, "frank-runner"))) {
-			await execAsync(
-				'git clone https://github.com/wearefrank/frank-runner.git',
-				rootPath
-			);
+			const simpleFrankPath = vscode.Uri.file(path.join(context.extensionPath, 'resources/simpleFrank/projectName'));
+			console.log(simpleFrankPath);
+			const targetDir = vscode.Uri.file(path.join(rootPath, projectNameTrimmed));
+
+			await copyDir(simpleFrankPath, targetDir);
+
+			vscode.env.openExternal(vscode.Uri.parse("https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-structure-and-customisation"));
 		}
-
-        await execAsync(
-            `git clone https://github.com/wearefrank/skeleton.git ${projectName}`,
-            rootPath
-        );
-
-		const skeletonrcJSONPath = path.join(rootPath, projectName, "skeletonrc.json");
-
-		let skeletonrcJSON = JSON.parse(fs.readFileSync(skeletonrcJSONPath, 'utf8'));
-
-		const mappings = {
-			"{{ cookiecutter.instance_name }}": projectName.toLowerCase(),
-			"{{ cookiecutter.instance_name_lc }}": projectName.toLowerCase(),
-			"{{ cookiecutter.configuration_name }}": projectName.toLowerCase()
-    	};
-
-		skeletonrcJSON.mappings = mappings;
-
-		fs.writeFileSync(skeletonrcJSONPath, JSON.stringify(skeletonrcJSON, null, 2));
-    
-		await execAsync(
-            `powershell -Command "Remove-Item -Path '.git' -Recurse -Force"`,
-  			path.join(rootPath, projectName)
-        );
-
-		await execAsync(
-            `powershell -Command "node ./skeleton.js"`,
-  			path.join(rootPath, projectName)
-        );
 	});
+	//Helper function to copy simple frank project to user workspace.
+	async function copyDir(source, target) {
+		await vscode.workspace.fs.createDirectory(target);
+
+		const entries = await vscode.workspace.fs.readDirectory(source);
+
+		for (const [name, type] of entries) {
+			const src = vscode.Uri.joinPath(source, name);
+			let dest = vscode.Uri.joinPath(target, name);
+			if (name === "configName") {
+				dest = vscode.Uri.joinPath(target, configNameTrimmed);
+			}
+
+			if (type === vscode.FileType.Directory) {
+				await copyDir(src, dest);
+			} else {
+				await vscode.workspace.fs.copy(src, dest, { overwrite: true });
+			}
+		}
+	}
 
 	vscode.commands.registerCommand("frank.openWalkthrough", () => {
 		console.log("opening frank walkthrough");
