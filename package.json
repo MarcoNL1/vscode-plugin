@@ -3,7 +3,7 @@
   "publisher": "wearefrank",
   "displayName": "Frank!Framework",
   "description": "A plugin to help users with the development of their Frank!Framework integrations!",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.107.0"
   },
@@ -229,8 +229,7 @@
       },
       {
         "command": "frank.toggleUpdate",
-        "title": "Toggle FF! Update",
-        "icon": "$(sync)"
+        "title": "Change FF! Version"
       }
       ,
       {

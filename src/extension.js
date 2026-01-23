@@ -95,10 +95,11 @@ function activate(context) {
 			}
 
 			const simpleFrankPath = vscode.Uri.file(path.join(context.extensionPath, 'resources/simpleFrank/projectName'));
-			console.log(simpleFrankPath);
 			const targetDir = vscode.Uri.file(path.join(rootPath, projectNameTrimmed));
 
 			await copyDir(simpleFrankPath, targetDir);
+
+			vscode.window.showTextDocument(vscode.Uri.file(path.join(rootPath, projectNameTrimmed, 'configurations', configNameTrimmed, 'Configuration.xml')));
 
 			vscode.env.openExternal(vscode.Uri.parse("https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-structure-and-customisation"));
 		}
@@ -213,7 +214,7 @@ function activate(context) {
 			return;
 		}
 
-		startService.toggleUpdate(item.path);
+		await startService.toggleUpdate(item.path);
 
 		startTreeProvider.rebuild();
     	startTreeProvider.refresh();

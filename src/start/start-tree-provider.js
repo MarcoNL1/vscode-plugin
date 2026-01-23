@@ -73,7 +73,7 @@ class StartTreeProvider {
 
         if (element instanceof StartTreeItem) {
             return element.projects.map(
-                p => new ProjectTreeItem(p.project, p.path, element.method)
+                p => new ProjectTreeItem(p.project, p.path, element.method, this.startService)
             );
         }
 
@@ -92,36 +92,30 @@ class StartTreeItem extends vscode.TreeItem {
 }
 
 class ProjectTreeItem extends vscode.TreeItem {
-    constructor(project, path, method) {
+    constructor(project, path, method, startService) {
         super(project);
         this.path = path;
         this.method = method;
+        this.startService = startService;
         this.contextValue = `projectTreeItem-${method}`;
 
         if (method === "ant") {
-            this.doUpdate = this.ffVersionSet();
+            this.tooltip = startService.ffVersionSet(path)
+                ? `Using Local FF! Version (Download Disabled). Right-Click to Change.`
+                : `Using Highest Online FF! Version. Right-Click to Change.`;
+            
+            if (startService.updateStrategySet(path)) {
+                this.tooltip = "Using Highest Stable Online FF! Version. Right-Click to Change."
+            }
+            
+            this.label = startService.ffVersionSet(path)
+                ? `${project} 🗁 ${startService.getSetFFVersion(path)}`
+                : `${project} ⭳`;
 
-            this.tooltip = this.doUpdate
-                ? `Using Highest Online FF! Version. Right-Click to Toggle.`
-                : `Using Highest Local FF! Version (Download Disabled). Right-Click to Toggle.`;
-
-            this.label = this.doUpdate
-                ? `${project} ⭳`
-                : `${project} 🖫`;
+            if (startService.updateStrategySet(path)) {
+                this.label = `${project} [⭳]`
+            }
         }
-    }
-
-    ffVersionSet() {
-        const frankRunnerPropertiesFile = path.join(this.path, "frank-runner.properties");
-
-        if (!fs.existsSync(frankRunnerPropertiesFile)) {
-            return true;
-        }
-        let frankRunnerProperties = fs.readFileSync(frankRunnerPropertiesFile, "utf8");
-
-        const hasActiveFFVersion = /^\s*ff\.version=.*$/m.test(frankRunnerProperties);
-
-        return hasActiveFFVersion;
     }
 }
 
