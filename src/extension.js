@@ -134,16 +134,16 @@ function activate(context) {
 	});
 
 	//Helper function for starting a project.
-	async function startHandler(item) {
+	async function startHandler(item, isCurrent) {
 		switch (item.method) {
 			case "ant":
-				await startService.startWithAnt(item.path);
+				await startService.startWithAnt(item.path, isCurrent);
 				break;
 			case "docker":
-				await startService.startWithDocker(item.path);
+				await startService.startWithDocker(item.path, isCurrent);
 				break;
 			case "dockerCompose":
-				await startService.startWithDockerCompose(item.path);
+				await startService.startWithDockerCompose(item.path, isCurrent);
 				break;
 		}
 
@@ -152,31 +152,13 @@ function activate(context) {
 	};
 
 	vscode.commands.registerCommand("frank.startCurrent", async function (item) { 
-		startHandler(item);
+		startHandler(item, true);
 		
 		startTreeProvider.rebuild();
         startTreeProvider.refresh();
 	});
 	vscode.commands.registerCommand("frank.startProject", async function (item) { 
-		startHandler(item);
-
-		startTreeProvider.rebuild();
-        startTreeProvider.refresh();
-	});
-	vscode.commands.registerCommand('frank.startAnt', async function () {
-		startService.startWithAnt();
-
-		startTreeProvider.rebuild();
-        startTreeProvider.refresh();
-	});
-	vscode.commands.registerCommand('frank.startDocker', async function () {
-		startService.startWithDocker();
-		
-		startTreeProvider.rebuild();
-        startTreeProvider.refresh();
-	});
-	vscode.commands.registerCommand('frank.startDockerCompose', async function () {
-		startService.startWithDockerCompose();
+		startHandler(item, false);
 
 		startTreeProvider.rebuild();
         startTreeProvider.refresh();

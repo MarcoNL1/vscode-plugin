@@ -13,12 +13,18 @@ class StartService {
         const storageDir = this.context.globalStorageUri.fsPath;
         const ranProjectsPath = path.join(storageDir, 'ranProjects.json');
 
+        const ranProjectsBody = {
+            "ant": [],
+            "docker": [],
+            "dockerCompose": []
+        };
+
         if (!fs.existsSync(storageDir)) {
             fs.mkdirSync(storageDir, { recursive: true });
         }
 
         if (!fs.existsSync(ranProjectsPath)) {
-            fs.writeFileSync(ranProjectsPath, "{}", "utf8");
+            fs.writeFileSync(ranProjectsPath, ranProjectsBody, "utf8");
         }
     }
 
@@ -28,9 +34,9 @@ class StartService {
         const defaultFilePath = path.join(this.context.extensionPath, 'resources', file)
         let newFile = fs.readFileSync(defaultFilePath, 'utf8');
 
-        if (file === "compose.frank.loc.yaml") {
+        if (file === "compose.frank.yaml") {
             if (workspaceRoot.toLowerCase().endsWith('\\frank-runner')) {
-                vscode.window.showErrorMessage("Please add the compose.frank.loc.yaml manually.");
+                vscode.window.showErrorMessage("Please add the compose.frank.yaml manually.");
                 return false;
             }
 
@@ -63,34 +69,17 @@ class StartService {
         let currentDir = path.dirname(editor.document.uri.fsPath);
         let lastDir = currentDir;
 
-        const isComposeFile = (filename) =>
-            filename.toLowerCase().includes("compose") &&
-            (filename.endsWith(".yml") || filename.endsWith(".yaml"));
-
         while (true) {
-            if (file) {
-                const matches = await vscode.workspace.findFiles(
-                    new vscode.RelativePattern(currentDir, file),
-                    null,
-                    1
-                );
-
-                if (matches.length > 0) {
+            if (!file) {
+                if (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir) != null) {
                     return currentDir;
                 }
-            } else {
-                if (fs.existsSync(path.join(currentDir, "build.xml"))) {
+            } else if (file != "compose.frank.yaml") {
+                if (fs.existsSync(path.join(currentDir, file))) {
                     return currentDir;
                 }
-
-                if (fs.existsSync(path.join(currentDir, "Dockerfile"))) {
-                    return currentDir;
-                }
-
-                const files = fs.readdirSync(currentDir);
-                if (files.some(isComposeFile)) {
-                    return currentDir;
-                }
+            } else if (this.getComposeFile(currentDir) != null) {
+                return currentDir;
             }
 
             if (path.normalize(currentDir).endsWith(path.normalize("frank-runner/examples"))) {
@@ -102,7 +91,7 @@ class StartService {
                     return undefined;
                 }
 
-                 const choice = await vscode.window.showInformationMessage(
+                const choice = await vscode.window.showInformationMessage(
                     `${file} doesn\'t exist in the current project. Create it?`,
                     'Yes',
                     'Cancel'
@@ -127,27 +116,31 @@ class StartService {
         }
     }
 
+    getComposeFile(dir) {
+        const isComposeFile = (filename) =>
+            filename.toLowerCase().includes("compose") &&
+            (filename.endsWith(".yml") || filename.endsWith(".yaml"));
+        
+        const files = fs.readdirSync(dir);
+        const composeFile = files.find(isComposeFile);
+
+        if (composeFile) {
+            return composeFile;
+        }
+
+        return null;
+    }
+
     async deleteRanProject(method, workingDir) {
         const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
         const ranProjectsFile = await fs.readFileSync(ranProjectsPath, 'utf8');
         let ranProjectsJSON = JSON.parse(ranProjectsFile);
 
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showErrorMessage("No active editor");
-            return;
-        }
-
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
-        if (!workspaceFolder) return;
-
-        const workspaceRootBasename = workspaceFolder.uri.fsPath;
-
-        ranProjectsJSON[workspaceRootBasename][0][method] = ranProjectsJSON[workspaceRootBasename][0][method].filter(
+        ranProjectsJSON[method] = ranProjectsJSON[method].filter(
             project => project.path !== workingDir
         );
 
-        fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectsJSON, null, 4), "utf8");
+        fs.writeFileSync(ranProjectsPath,JSON.stringify(ranProjectsJSON, null, 4),'utf8');
     }
 
     async saveRanProject(method, workingDir) {
@@ -156,41 +149,22 @@ class StartService {
         const ranProjects = fs.readFileSync(ranProjectsPath, 'utf8');
         let ranProjectJSON = JSON.parse(ranProjects);
 
+        if (ranProjectJSON[method].length > 0) {
+            const alreadyExists = ranProjectJSON[method].some(project =>
+                project.path === workingDir
+            );
+
+            if (alreadyExists) {
+                return;
+            }
+        }
+        
         const newRanProjectBody = {
             project: path.basename(workingDir),
             path: workingDir
         };
 
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showErrorMessage("No active editor");
-            return;
-        }
-
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
-        if (!workspaceFolder) return;
-
-        const workspaceRootBasename = workspaceFolder.uri.fsPath;
-
-        if (!ranProjectJSON[workspaceRootBasename]) {
-            ranProjectJSON[workspaceRootBasename] = [{}];
-        }
-
-        const workspaceEntry = ranProjectJSON[workspaceRootBasename][0];
-
-        if (!Array.isArray(workspaceEntry[method])) {
-            workspaceEntry[method] = [];
-        }
-
-        const exists = workspaceEntry[method].some(
-            ({ project, path }) =>
-                project === newRanProjectBody.project &&
-                path === newRanProjectBody.path
-        );
-
-        if (!exists) {
-            workspaceEntry[method].push(newRanProjectBody);
-        }
+        ranProjectJSON[method].push(newRanProjectBody);
 
         fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectJSON, null, 4), "utf8");
     }
@@ -299,7 +273,7 @@ class StartService {
 
         if (!fs.existsSync(downloadDir)) return [];
 
-        const versionRegex = /(\d+(?:\.\d+)*-\d+\.\d+)/;
+        const versionRegex = /(\d+(?:\.\d+)*(?:-\d+\.\d+)?)/;
 
         return fs.readdirSync(downloadDir)
             .filter(f =>
@@ -353,15 +327,8 @@ class StartService {
         return setFFversion;
     }
 
-    async startWithAnt(workingDir) {
-        if (workingDir == null) {
-            const editor = vscode.window.activeTextEditor;
-
-            if (!editor) {
-                vscode.window.showErrorMessage("No active editor");
-                return;
-            }
-
+    async startWithAnt(workingDir, isCurrent) {
+        if (isCurrent) {
             workingDir = await this.getWorkingDirectory("build.xml");
         }
 
@@ -370,7 +337,6 @@ class StartService {
         }
         
         const term = vscode.window.createTerminal("Frank Ant");
-
         term.show();
 
         term.sendText(`cd "${workingDir}"`);
@@ -384,15 +350,8 @@ class StartService {
         await this.saveRanProject("ant", workingDir);
     }
 
-    async startWithDocker(workingDir) {
-        if (workingDir == null) {
-            const editor = vscode.window.activeTextEditor;
-
-            if (!editor) {
-                vscode.window.showErrorMessage("No active editor");
-                return;
-            }
-
+    async startWithDocker(workingDir, isCurrent) {
+        if (isCurrent) {
             workingDir = await this.getWorkingDirectory("Dockerfile");
         }
 
@@ -413,27 +372,20 @@ class StartService {
         await this.saveRanProject("docker", workingDir);
     }
 
-    async startWithDockerCompose(workingDir) {
-        if (workingDir == null) {
-            const editor = vscode.window.activeTextEditor;
-
-            if (!editor) {
-                vscode.window.showErrorMessage("No active editor");
-                return;
-            }
-
-            workingDir = await this.getWorkingDirectory("compose.frank.loc.yaml");
+    async startWithDockerCompose(workingDir, isCurrent) {
+        if (isCurrent) {
+            workingDir = await this.getWorkingDirectory("compose.frank.yaml");
         }
 
         if (!workingDir) {
             return;
         }
 
-        var term = vscode.window.createTerminal('cmd');
+        const term = vscode.window.createTerminal('cmd');
         term.show();
-    
+
         term.sendText(`cd "${workingDir}"`);
-        term.sendText('docker compose -f compose.frank.loc.yaml up --build');
+        term.sendText(`docker compose -f ${this.getComposeFile(workingDir)} --build`);
 
         await this.saveRanProject("dockerCompose", workingDir);
     }

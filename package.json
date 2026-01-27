@@ -157,7 +157,7 @@
         },
         {
           "command": "frank.startCurrent",
-          "when": "view == startTreeView && (viewItem == startTreeItem)",
+          "when": "view == startTreeView && (viewItem == startTreeItem-ant || viewItem == startTreeItem-docker || viewItem == startTreeItem-dockerCompose)",
           "group": "inline@2"
         },
         {
@@ -181,18 +181,6 @@
       {
         "command": "frank.createNewFrank",
         "title": "Create a Frank"
-      },
-      {
-        "command": "frank.startAnt",
-        "title": "Start a Frank"
-      },
-      {
-        "command": "frank.startDocker",
-        "title": "Start a Frank With Docker"
-      },
-      {
-        "command": "frank.startDockerCompose",
-        "title": "Start a Frank With Docker Compose"
       },
       {
         "command": "frank.addNewUserSnippet",

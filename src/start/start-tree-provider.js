@@ -36,22 +36,21 @@ class StartTreeProvider {
 
         const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
 
-        for (let folder of workspaceFolders) {
-            if (ranProjectJSON.hasOwnProperty(folder.uri.fsPath)) {
-                if (ranProjectJSON[folder.uri.fsPath][0].hasOwnProperty("ant")) {
-                    let existingProjectAnt = ranProjectJSON[folder.uri.fsPath][0].ant;
-                    existingProjectsAnt.push(...existingProjectAnt);
-                }
-                
-                if (ranProjectJSON[folder.uri.fsPath][0].hasOwnProperty("docker")) {
-                    let existingProjectDocker = ranProjectJSON[folder.uri.fsPath][0].docker;
-                    existingProjectsDocker.push(...existingProjectDocker);
-                }
+        for (const project of ranProjectJSON.ant ?? []) {
+            if (this.isInWorkspace(project.path, workspaceFolders)) {
+                existingProjectsAnt.push(project);
+            }
+        }
 
-                if (ranProjectJSON[folder.uri.fsPath][0].hasOwnProperty("dockerCompose")) {
-                    let existingProjectDockerCompose = ranProjectJSON[folder.uri.fsPath][0].dockerCompose;
-                    existingProjectsDockerCompose.push(...existingProjectDockerCompose);
-                }
+        for (const project of ranProjectJSON.docker ?? []) {
+            if (this.isInWorkspace(project.path, workspaceFolders)) {
+                existingProjectsDocker.push(project);
+            }
+        }
+
+        for (const project of ranProjectJSON.dockerCompose ?? []) {
+            if (this.isInWorkspace(project.path, workspaceFolders)) {
+                existingProjectsDockerCompose.push(project);
             }
         }
 
@@ -79,6 +78,12 @@ class StartTreeProvider {
 
         return [];
     }
+
+    isInWorkspace(projectPath, workspaceFolders) {
+        return workspaceFolders.some(folder =>
+            projectPath.startsWith(folder.uri.fsPath)
+        );
+    }
 }
 
 class StartTreeItem extends vscode.TreeItem {
@@ -89,54 +94,42 @@ class StartTreeItem extends vscode.TreeItem {
         this.contextValue = `startTreeItem-${method}`;
         this.startService = startService;
         this.path = "";
-        // this.a = await startService.getWorkingDirectory();
 
+        this.setPath();
 
-        // if (method === "ant") {
-        //     this.tooltip = this.startService.ffVersionSet(this.a)
-        //         ? `Using Local FF! Version (Download Disabled). Right-Click to Change.`
-        //         : `Using Highest Online FF! Version. Right-Click to Change.`;
-            
-        //     if (this.startService.updateStrategySet(this.a)) {
-        //         this.tooltip = "Using Highest Stable Online FF! Version. Right-Click to Change."
-        //     }
-            
-        //     this.label = this.startService.ffVersionSet(this.a)
-        //         ? `${path.basename(this.a)} 🗁 ${this.startService.getSetFFVersion(this.a)}`
-        //         : `${path.basename(this.a)} ⭳`;
-
-        //     if (this.startService.updateStrategySet(this.a)) {
-        //         this.label = `${path.basename(this.a)} [⭳]`
-        //     }
-        // }
-        if (method === "ant"){
-            this.set();
+        if (method == "ant") {
+            this.updateDescription();
         }
-    
     }
 
-    async set() {
-        console.log("a");
-        let a = await this.startService.getWorkingDirectory();
-        console.log(a);
-        this.path = a;
-    
-        this.tooltip = this.startService.ffVersionSet(a)
+    async setPath() {
+        let workingDir = await this.startService.getWorkingDirectory();
+        
+        this.path = workingDir;
+    }
+
+    async updateDescription() {
+        let workingDir = await this.startService.getWorkingDirectory();
+
+        if (!workingDir) {
+            return;
+        }
+
+        this.tooltip = this.startService.ffVersionSet(workingDir)
             ? `Using Local FF! Version (Download Disabled). Right-Click to Change.`
             : `Using Highest Online FF! Version. Right-Click to Change.`;
         
-        if (this.startService.updateStrategySet(a)) {
+        if (this.startService.updateStrategySet(workingDir)) {
             this.tooltip = "Using Highest Stable Online FF! Version. Right-Click to Change."
         }
         
-        this.description = this.startService.ffVersionSet(a)
-            ? `${path.basename(a)} 🗁 ${this.startService.getSetFFVersion(a)}`
-            : `${path.basename(a)} ⭳`;
+        this.description = this.startService.ffVersionSet(workingDir)
+            ? `${path.basename(workingDir)} 🗁 ${this.startService.getSetFFVersion(workingDir)}`
+            : `${path.basename(workingDir)} ⭳`;
 
-        if (this.startService.updateStrategySet(a)) {
-            this.description = `${path.basename(a)} [⭳]`
+        if (this.startService.updateStrategySet(workingDir)) {
+            this.description = `${path.basename(workingDir)} [⭳]`
         }
-        
     }
 }
 
