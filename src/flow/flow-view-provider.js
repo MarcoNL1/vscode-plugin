@@ -16,12 +16,19 @@ class FlowViewProvider {
 
       global.DOMParser = new JSDOM().window.DOMParser;
       global.document = new JSDOM().window.document;
-      
+
       this.updateWebview();
     }
 
     async updateWebview() {
       if (!this.webView) {
+        return;
+      }
+
+      const editor = vscode.window.activeTextEditor; 
+      
+      if (!editor) {
+        this.webView.webview.html = getOpenedWithEmptyEditorWebviewContent();
         return;
       }
 
@@ -112,7 +119,7 @@ class FlowViewProvider {
 
         this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
       } catch (err) {
-        this.webView.webview.html = getErrorWebviewContent("This XML cannot be converted to a Flowchart");
+        this.webView.webview.html = getErrorWebviewContent("This file is not recognized as a Frank!Configuration");
       }
     }
 }
@@ -140,7 +147,7 @@ function convertXSLtoSEF(context, xsl) {
 function getCurrentConfiguration() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    return "";
+    return;
   }
   return editor.document.getText();
 }
@@ -197,6 +204,35 @@ function getErrorWebviewContent(error) {
         <h2>Error</h2>
         <p>Something is wrong with your XML :(</p>
         <pre>${error}</pre>
+    </body>
+    </html>
+    `;
+}
+
+function getOpenedWithEmptyEditorWebviewContent() {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Flowchart</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                color: var(--vscode-errorForeground);
+                padding: 10px;
+            }
+            pre {
+                background: var(--vscode-editorWidget-background);
+                border-left: 4px solid var(--vscode-errorForeground);
+                padding: 5px;
+                white-space: pre-wrap;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Hello!</h2>
+        <p>Open a Frank!Configuration to get started :)</p>
     </body>
     </html>
     `;

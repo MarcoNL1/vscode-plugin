@@ -101,7 +101,6 @@ class StartService {
                 if (!file) {
                     return undefined;
                 }
-                console.log("Ha");
 
                  const choice = await vscode.window.showInformationMessage(
                     `${file} doesn\'t exist in the current project. Create it?`,

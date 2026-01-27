@@ -126,7 +126,6 @@ function activate(context) {
 	}
 
 	vscode.commands.registerCommand("frank.openWalkthrough", () => {
-		console.log("opening frank walkthrough");
 		vscode.commands.executeCommand(
 			"workbench.action.openWalkthrough",
 			"wearefrank.wearefrank#introduction",
