@@ -24,7 +24,7 @@ class StartService {
         }
 
         if (!fs.existsSync(ranProjectsPath)) {
-            fs.writeFileSync(ranProjectsPath, ranProjectsBody, "utf8");
+            fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectsBody, null, 4), "utf8");
         }
     }
 
