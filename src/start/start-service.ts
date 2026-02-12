@@ -29,7 +29,7 @@ class StartService {
         }
     }
 
-    async createFile(workspaceRoot, file) {
+    async createFile(workspaceRoot: any, file: any) {
         const newFilePath = path.join(workspaceRoot, file)
 
         const defaultFilePath = path.join(this.context.extensionPath, 'resources', file)
@@ -55,7 +55,7 @@ class StartService {
         return true;
     }
 
-    async getWorkingDirectory(file?: any) {
+    async getWorkingDirectory(file?: any): Promise<any> {
         const editor = vscode.window.activeTextEditor;
         if(!editor) {
             return;
@@ -117,8 +117,8 @@ class StartService {
         }
     }
 
-    getComposeFile(dir) {
-        const isComposeFile = (filename) =>
+    getComposeFile(dir: any) {
+        const isComposeFile = (filename: any) =>
             filename.toLowerCase().includes("compose") &&
             (filename.endsWith(".yml") || filename.endsWith(".yaml"));
         
@@ -132,26 +132,26 @@ class StartService {
         return null;
     }
 
-    async deleteRanProject(method, workingDir) {
+    async deleteRanProject(method: any, workingDir: any) {
         const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
         const ranProjectsFile = await fs.readFileSync(ranProjectsPath, 'utf8');
         let ranProjectsJSON = JSON.parse(ranProjectsFile);
 
         ranProjectsJSON[method] = ranProjectsJSON[method].filter(
-            project => project.path !== workingDir
+            (project: any) => project.path !== workingDir
         );
 
         fs.writeFileSync(ranProjectsPath,JSON.stringify(ranProjectsJSON, null, 4),'utf8');
     }
 
-    async saveRanProject(method, workingDir) {
+    async saveRanProject(method: any, workingDir: any) {
         const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
 
         const ranProjects = fs.readFileSync(ranProjectsPath, 'utf8');
         let ranProjectJSON = JSON.parse(ranProjects);
 
         if (ranProjectJSON[method].length > 0) {
-            const alreadyExists = ranProjectJSON[method].some(project =>
+            const alreadyExists = ranProjectJSON[method].some((project: any) =>
                 project.path === workingDir
             );
 
@@ -170,7 +170,7 @@ class StartService {
         fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectJSON, null, 4), "utf8");
     }
 
-    isFrameworkFile(file) {
+    isFrameworkFile(file: any) {
         if (file.startsWith('frankframework-webapp')) {
             return true;
         }
@@ -180,7 +180,7 @@ class StartService {
         }
     }
 
-    async toggleUpdate(workingDir) {
+    async toggleUpdate(workingDir: any) {
         const FFOptions: string[] = [];
         FFOptions.push("Highest Online Version");
         FFOptions.push("Highest Stable Online Version")
@@ -263,7 +263,7 @@ class StartService {
         }
     }
 
-    getLocalFFVersions(workingDir) {
+    getLocalFFVersions(workingDir: any) {
         let downloadDir;
 
         if (workingDir.includes("frank-runner\\examples")) {
@@ -284,13 +284,13 @@ class StartService {
                 const match = f.match(versionRegex);
                 return {
                     file: f,
-                    version: match[1]
+                    version: match ? match[1] : ""
                 };
             })
             .filter(e => e.version);
     }
 
-    updateStrategySet(workingDir) {
+    updateStrategySet(workingDir: any) {
         const frankRunnerPropertiesFile = path.join(workingDir, "frank-runner.properties");
 
         if (fs.existsSync(frankRunnerPropertiesFile)) {
@@ -304,7 +304,7 @@ class StartService {
         return false;
     }
 
-    ffVersionSet(workingDir) {
+    ffVersionSet(workingDir: any) {
         const frankRunnerPropertiesFile = path.join(workingDir, "frank-runner.properties");
 
         if (fs.existsSync(frankRunnerPropertiesFile)) {
@@ -318,17 +318,18 @@ class StartService {
         return false;
     }
     
-    getSetFFVersion(workingDir) {
+    getSetFFVersion(workingDir: any) {
         const frankRunnerPropertiesFile = path.join(workingDir, "frank-runner.properties");
 
         let frankRunnerProperties = fs.readFileSync(frankRunnerPropertiesFile, "utf8");
 
-        const setFFversion = frankRunnerProperties.match(/^\s*ff\.version=.*$/m)[0].split("=")[1];
+        const match = frankRunnerProperties.match(/^\s*ff\.version=.*$/m);
+        const setFFversion = match ? match[0].split("=")[1] : "";
 
         return setFFversion;
     }
 
-    async startWithAnt(workingDir, isCurrent) {
+    async startWithAnt(workingDir: any, isCurrent: any) {
         if (isCurrent) {
             workingDir = await this.getWorkingDirectory("build.xml");
         }
@@ -351,7 +352,7 @@ class StartService {
         await this.saveRanProject("ant", workingDir);
     }
 
-    async startWithDocker(workingDir, isCurrent) {
+    async startWithDocker(workingDir: any, isCurrent: any) {
         if (isCurrent) {
             workingDir = await this.getWorkingDirectory("Dockerfile");
         }
@@ -373,7 +374,7 @@ class StartService {
         await this.saveRanProject("docker", workingDir);
     }
 
-    async startWithDockerCompose(workingDir, isCurrent) {
+    async startWithDockerCompose(workingDir: any, isCurrent: any) {
         if (isCurrent) {
             workingDir = await this.getWorkingDirectory("compose.frank.yaml");
         }

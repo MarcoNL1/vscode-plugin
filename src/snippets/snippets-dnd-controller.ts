@@ -15,12 +15,12 @@ class SnippetsDndController {
     this.dropMimeTypes = ["application/vnd.code.tree.snippetsTreeview"];
   }
 
-  async handleDrag(sourceItems, dataTransfer, token) {
+  async handleDrag(sourceItems: any, dataTransfer: any, token: any) {
     const draggableItems = sourceItems.filter(
-      item => item.contextValue === "snippetTreeItem-user"
+      (item: any) => item.contextValue === "snippetTreeItem-user"
     );
 
-    const payload = draggableItems.map(item => ({
+    const payload = draggableItems.map((item: any) => ({
       index: item.index,
       parent: item.category,
       contextValue: item.contextValue
@@ -32,7 +32,7 @@ class SnippetsDndController {
     );
   }
 
-  async handleDrop(target, dataTransfer, token) {
+  async handleDrop(target: any, dataTransfer: any, token: any) {
     const dataItem = dataTransfer.get("application/vnd.code.tree.snippetsTreeview");
     
     const payload = JSON.parse(dataItem.value); 
@@ -40,7 +40,7 @@ class SnippetsDndController {
     if (target?.contextValue === "categoryTreeItem-user") {
       let targetParent = target.label;
 
-      payload.forEach(snippetTreeItem =>  {
+      payload.forEach((snippetTreeItem: any) =>  {
         let userSnippets = this.snippetsService.getUserSnippets();
 
         let oldParent = snippetTreeItem.parent;

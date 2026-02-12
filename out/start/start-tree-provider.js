@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 class StartTreeProvider {
     constructor(context, startService) {
+        this.startTreeItems = [];
         this.context = context;
         this.startService = startService;
         this._onDidChangeTreeData = new vscode.EventEmitter();
@@ -62,7 +63,7 @@ class StartTreeProvider {
         return [];
     }
     isInWorkspace(projectPath, workspaceFolders) {
-        return workspaceFolders.some(folder => projectPath.startsWith(folder.uri.fsPath));
+        return workspaceFolders.some((folder) => projectPath.startsWith(folder.uri.fsPath));
     }
 }
 exports.StartTreeProvider = StartTreeProvider;

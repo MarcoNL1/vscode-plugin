@@ -7,7 +7,7 @@ class StartTreeProvider {
     startService: any;
     _onDidChangeTreeData: any;
     onDidChangeTreeData: any;
-    startTreeItems: any[];
+    startTreeItems: any[] = [];
 
     constructor(context: any, startService: any) {
         this.context = context;
@@ -67,11 +67,11 @@ class StartTreeProvider {
         this.startTreeItems = [antTreeItem, dockerTreeItem, dockerComposeTreeItem];
     }
 
-    getTreeItem(snippet) {
+    getTreeItem(snippet: any) {
         return snippet;
     }
 
-    getChildren(element) {
+    getChildren(element: any) {
         if (!element) {
             return this.startTreeItems;
         }
@@ -85,8 +85,8 @@ class StartTreeProvider {
         return [];
     }
 
-    isInWorkspace(projectPath, workspaceFolders) {
-        return workspaceFolders.some(folder =>
+    isInWorkspace(projectPath: any, workspaceFolders: any) {
+        return workspaceFolders.some((folder: any) =>
             projectPath.startsWith(folder.uri.fsPath)
         );
     }

@@ -4,6 +4,7 @@ exports.SnippetsTreeProvider = void 0;
 const vscode = require("vscode");
 class SnippetsTreeProvider {
     constructor(userSnippetsService) {
+        this.rootTreeItems = [];
         this._onDidChangeTreeData = new vscode.EventEmitter();
         this.onDidChangeTreeData = this._onDidChangeTreeData.event;
         this.userSnippetsService = userSnippetsService;

@@ -104,7 +104,7 @@ class StartService {
         const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
         const ranProjectsFile = await fs.readFileSync(ranProjectsPath, 'utf8');
         let ranProjectsJSON = JSON.parse(ranProjectsFile);
-        ranProjectsJSON[method] = ranProjectsJSON[method].filter(project => project.path !== workingDir);
+        ranProjectsJSON[method] = ranProjectsJSON[method].filter((project) => project.path !== workingDir);
         fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectsJSON, null, 4), 'utf8');
     }
     async saveRanProject(method, workingDir) {
@@ -112,7 +112,7 @@ class StartService {
         const ranProjects = fs.readFileSync(ranProjectsPath, 'utf8');
         let ranProjectJSON = JSON.parse(ranProjects);
         if (ranProjectJSON[method].length > 0) {
-            const alreadyExists = ranProjectJSON[method].some(project => project.path === workingDir);
+            const alreadyExists = ranProjectJSON[method].some((project) => project.path === workingDir);
             if (alreadyExists) {
                 return;
             }
@@ -220,7 +220,7 @@ class StartService {
             const match = f.match(versionRegex);
             return {
                 file: f,
-                version: match[1]
+                version: match ? match[1] : ""
             };
         })
             .filter(e => e.version);
@@ -246,7 +246,8 @@ class StartService {
     getSetFFVersion(workingDir) {
         const frankRunnerPropertiesFile = path.join(workingDir, "frank-runner.properties");
         let frankRunnerProperties = fs.readFileSync(frankRunnerPropertiesFile, "utf8");
-        const setFFversion = frankRunnerProperties.match(/^\s*ff\.version=.*$/m)[0].split("=")[1];
+        const match = frankRunnerProperties.match(/^\s*ff\.version=.*$/m);
+        const setFFversion = match ? match[0].split("=")[1] : "";
         return setFFversion;
     }
     async startWithAnt(workingDir, isCurrent) {

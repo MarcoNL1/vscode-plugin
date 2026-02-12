@@ -50,7 +50,7 @@ class SnippetsService {
         }
     }
 
-    setUserSnippets(userSnippets) {
+    setUserSnippets(userSnippets: any) {
         const userSnippetsStoragePath =  this.getUserSnippetsPath();
 
         try {
@@ -73,7 +73,7 @@ class SnippetsService {
         }
     }
 
-    async addNewUserSnippet(userSnippetsTreeProvider) {
+    async addNewUserSnippet(userSnippetsTreeProvider: any) {
         const editor = vscode.window.activeTextEditor;
     
         if (!editor) {
@@ -125,7 +125,7 @@ class SnippetsService {
         }
     }
 
-    deleteUserSnippet(category, snippetIndex) {
+    deleteUserSnippet(category: any, snippetIndex: any) {
         try {
             const userSnippets = this.getUserSnippets();
 
@@ -137,7 +137,7 @@ class SnippetsService {
         }
     }
 
-    deleteAllUserSnippetByCategory(category) {
+    deleteAllUserSnippetByCategory(category: any) {
         try {
             const userSnippets = this.getUserSnippets();
 
@@ -149,7 +149,7 @@ class SnippetsService {
         }
     }
 
-    changeCategoryOfUserSnippets(oldCategory, category) {
+    changeCategoryOfUserSnippets(oldCategory: any, category: any) {
         const userSnippets = this.getUserSnippets();
 
         if (Object.keys(userSnippets).includes(category)) {
@@ -170,7 +170,7 @@ class SnippetsService {
         }
     }
 
-    async addNewCategoryOfUserSnippets(userSnippetsTreeProvider) {
+    async addNewCategoryOfUserSnippets(userSnippetsTreeProvider: any) {
         const userSnippets = this.getUserSnippets();
 
         const category = await vscode.window.showInputBox({
@@ -196,7 +196,7 @@ class SnippetsService {
         userSnippetsTreeProvider.refresh();
     }
 
-    async uploadUserSnippet(category) {    
+    async uploadUserSnippet(category: any) {    
         const storagePath = this.context.globalStorageUri.fsPath;
         const targetDir = path.join(storagePath, "frankframework.wiki");
         const targetPath = path.join(targetDir, `${category}.md`)
@@ -271,7 +271,7 @@ class SnippetsService {
         }
     }
 
-    prettifyXml(xml) {
+    prettifyXml(xml: any) {
         try {
             return format(xml, {
                 indentation: '    ',
@@ -283,7 +283,7 @@ class SnippetsService {
         }
     };
 
-    extractSnippets(targetDir) {
+    extractSnippets(targetDir: any) {
         const snippetsStoragePath =  path.join(this.context.globalStorageUri.fsPath, '../../snippets/frankframework.code-snippets');
 
         const regex = new RegExp(
@@ -293,7 +293,7 @@ class SnippetsService {
         'gm'
         );
 
-        const snippets = {}
+        const snippets: Record<string, any> = {}
         
         try {
             const files = fs.readdirSync(targetDir);

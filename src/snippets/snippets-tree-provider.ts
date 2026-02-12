@@ -6,7 +6,7 @@ class SnippetsTreeProvider {
   userSnippetsService: any;
   userSnippetsTreeItems: any[];
   rootTreeItem: any;
-  rootTreeItems: any[];
+  rootTreeItems: any[] = [];
 
   constructor(userSnippetsService: any) {
     this._onDidChangeTreeData = new vscode.EventEmitter();
@@ -50,11 +50,11 @@ class SnippetsTreeProvider {
     ];
   }
 
-  getTreeItem(treeItem) {
+  getTreeItem(treeItem: any) {
     return treeItem;
   }
 
-  getChildren(treeItem) {
+  getChildren(treeItem: any) {
     if (!treeItem) {
       return this.rootTreeItems;
     }
@@ -70,11 +70,11 @@ class SnippetsTreeProvider {
     return [];
   }
 
-  convertUserSnippetToCategoryTreeItem(category, root, userSnippetsPerCategory) {
+  convertUserSnippetToCategoryTreeItem(category: any, root: any, userSnippetsPerCategory: any) {
     return new CategoryTreeItem(category, root, userSnippetsPerCategory, vscode.TreeItemCollapsibleState.Expanded);
   }
 
-  convertFrameworkSnippetToCategoryTreeItem(category, root, snippets) {
+  convertFrameworkSnippetToCategoryTreeItem(category: any, root: any, snippets: any) {
     return new CategoryTreeItem(category, root, snippets, vscode.TreeItemCollapsibleState.Collapsed);
   }
 

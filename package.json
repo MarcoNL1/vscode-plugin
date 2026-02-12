@@ -5,7 +5,6 @@
   "description": "A plugin to help users with the development of their Frank!Framework integrations!",
   "icon": "resources/images/android-chrome-192x192.png",
   "version": "0.1.1",
-  "type": "module",
   "extensionDependencies": [
     "redhat.vscode-xml"
   ],
@@ -298,6 +297,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/he": "^1.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.11",
     "@types/vscode": "^1.109.0",

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-function showSnippetsView(context, category, userSnippetsTreeProvider, userSnippetsService) {
+function showSnippetsView(context: any, category: any, userSnippetsTreeProvider: any, userSnippetsService: any) {
     const panel = vscode.window.createWebviewPanel(
         'frankSnippets',
         'Frank! Snippets',
@@ -77,14 +77,14 @@ function showSnippetsView(context, category, userSnippetsTreeProvider, userSnipp
     );
 }
 
-function deleteSnippet(context, category, snippetIndex, userSnippetsTreeProvider, userSnippetsService) {
+function deleteSnippet(context: any, category: any, snippetIndex: any, userSnippetsTreeProvider: any, userSnippetsService: any) {
     userSnippetsService.deleteUserSnippet(category, snippetIndex);
 
     userSnippetsTreeProvider.rebuild();
     userSnippetsTreeProvider.refresh();
 }
 
-function editSnippet(context, category, snippetIndex, snippet, userSnippetsService, userSnippetsTreeProvider) {
+function editSnippet(context: any, category: any, snippetIndex: any, snippet: any, userSnippetsService: any, userSnippetsTreeProvider: any) {
     try {
         const userSnippets = userSnippetsService.getUserSnippets();
         
@@ -99,7 +99,7 @@ function editSnippet(context, category, snippetIndex, snippet, userSnippetsServi
     }
 }
 
-function addSnippet(context, category, snippet, userSnippetsService, userSnippetsTreeProvider) {
+function addSnippet(context: any, category: any, snippet: any, userSnippetsService: any, userSnippetsTreeProvider: any) {
     const userSnippets = userSnippetsService.getUserSnippets();
 
     userSnippets[category].push(snippet);
@@ -110,18 +110,18 @@ function addSnippet(context, category, snippet, userSnippetsService, userSnippet
     userSnippetsTreeProvider.refresh();
 }
 
-function exportUserSnippets(context, category, userSnippetsService) {
+function exportUserSnippets(context: any, category: any, userSnippetsService: any) {
     userSnippetsService.uploadUserSnippet(category);
 }
 
-function changeCategoryOfUserSnippets(context, oldCategory, category, userSnippetsService, userSnippetsTreeProvider) {
+function changeCategoryOfUserSnippets(context: any, oldCategory: any, category: any, userSnippetsService: any, userSnippetsTreeProvider: any) {
     userSnippetsService.changeCategoryOfUserSnippets(oldCategory, category);
 
     userSnippetsTreeProvider.rebuild();
     userSnippetsTreeProvider.refresh();
 }
 
-function copySnippet(snippet) {
+function copySnippet(snippet: any) {
     vscode.env.clipboard.writeText(snippet);
     vscode.window.showInformationMessage("Copied snippet to clipboard!");
 }
@@ -130,7 +130,7 @@ function showError() {
     vscode.window.showErrorMessage("Error");
 }
 
-function getWebviewContent(safeUserSnippets, category, script, css, codiconCss) {
+function getWebviewContent(safeUserSnippets: any, category: any, script: any, css: any, codiconCss: any) {
     return `<!DOCTYPE html>
     <html lang="en">
         <head>
