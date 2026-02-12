@@ -5,6 +5,7 @@
   "description": "A plugin to help users with the development of their Frank!Framework integrations!",
   "icon": "resources/images/android-chrome-192x192.png",
   "version": "0.1.1",
+  "type": "module",
   "extensionDependencies": [
     "redhat.vscode-xml"
   ],
@@ -21,7 +22,7 @@
   "activationEvents": [
     "*"
   ],
-  "main": "./src/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "walkthroughs": [
       {
@@ -187,11 +188,13 @@
     "commands": [
       {
         "command": "frank.createNewFrank",
-        "title": "Create a Frank"
+        "title": "Create a Frank",
+        "icon": "$(add)"
       },
       {
         "command": "frank.addNewUserSnippet",
-        "title": "Add Frank! Snippet"
+        "title": "Add Frank! Snippet",
+        "icon": "$(add)"
       },
       {
         "command": "frank.editUserSnippet",
@@ -225,9 +228,9 @@
       },
       {
         "command": "frank.toggleUpdate",
-        "title": "Change FF! Version"
-      }
-      ,
+        "title": "Change FF! Version",
+        "icon": "$(sync)"
+      },
       {
         "command": "frank.deleteProject",
         "title": "Delete From List",
@@ -255,23 +258,27 @@
         {
           "id": "flowView",
           "name": "Flow",
-          "type": "webview"
+          "type": "webview",
+          "icon": "$(symbol-icon)"
         }
       ],
       "welcomeViewContainer": [
         {
           "id": "welcomeView",
-          "name": "Frank!Framework"
+          "name": "Frank!Framework",
+          "icon": "$(home)"
         }
       ],
       "explorer": [
         {
           "id": "startTreeView",
-          "name": "Frank!Start"
+          "name": "Frank!Start",
+          "icon": "$(run)"
         },
         {
           "id": "snippetsTreeView",
-          "name": "Frank!Snippets"
+          "name": "Frank!Snippets",
+          "icon": "$(symbol-snippet)"
         }
       ]
     },
@@ -283,17 +290,21 @@
     ]
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
     "lint": "eslint .",
     "pretest": "npm run lint",
     "test": "vscode-test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "22.x",
-    "@types/vscode": "^1.104.0",
+    "@types/node": "^22.19.11",
+    "@types/vscode": "^1.109.0",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
-    "eslint": "^9.34.0"
+    "eslint": "^9.34.0",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@frankframework/frank-config-layout": "^1.2.4",

@@ -55,7 +55,7 @@ function activate(context) {
         if (projectType && projectType.description) {
             vscode.env.openExternal(vscode.Uri.parse(projectType.description));
         }
-        else if (projectType.label === "Simple Frank") {
+        else if (projectType?.label === "Simple Frank") {
             const projectName = await vscode.window.showInputBox({
                 placeHolder: 'Give your project a name',
                 validateInput: (value) => {
@@ -83,6 +83,10 @@ function activate(context) {
             }
             configNameTrimmed = configName.trim();
             const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders || workspaceFolders.length === 0) {
+                vscode.window.showErrorMessage('No workspace folder open');
+                return;
+            }
             const rootPath = workspaceFolders[0].uri.fsPath;
             if (!fs.existsSync(path.join(rootPath, "frank-runner"))) {
                 await execAsync('git clone https://github.com/wearefrank/frank-runner.git', rootPath);

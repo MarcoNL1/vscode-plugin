@@ -27,7 +27,7 @@ class FlowViewProvider {
             return;
         }
         const config = getCurrentConfiguration();
-        const parser = new DOMParser();
+        const parser = new global.DOMParser();
         const xml = parser.parseFromString(config, "text/xml");
         const parserErrors = xml.getElementsByTagName("parsererror");
         if (parserErrors.length > 0) {
@@ -41,7 +41,7 @@ class FlowViewProvider {
             sourceText: config,
             destination: "serialized"
         });
-        const isAdapter = config.split("\n")[0].includes("adapter");
+        const isAdapter = config?.split("\n")[0].includes("adapter");
         const mermaidSef = convertXSLtoSEF(this.context, isAdapter ? "adapter2mermaid" : "configuration2mermaid");
         const paramsPath = path.join(this.context.extensionPath, "resources/flow/xml/params.xml");
         const params = fs.readFileSync(paramsPath, 'utf8');

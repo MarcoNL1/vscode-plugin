@@ -1,0 +1,1 @@
+{"version":3,"file":"flow-view-provider.d.ts","sourceRoot":"","sources":["flow-view-provider.ts"],"names":[],"mappings":"AAOA,MAAM,CAAC,OAAO,OAAO,gBAAgB;IACjC,OAAO,EAAE,GAAG,CAAC;IACb,OAAO,EAAE,GAAG,CAAC;gBACD,OAAO,EAAE,GAAG;IAIxB,kBAAkB,CAAC,WAAW,KAAA;IAUxB,aAAa;CAsGtB"}
