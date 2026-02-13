@@ -11,6 +11,7 @@ import FlowViewProvider from './flow/flow-view-provider';
 import { SnippetsTreeProvider } from "./snippets/snippets-tree-provider";
 import { SnippetsDndController } from "./snippets/snippets-dnd-controller";
 import { StartTreeProvider } from "./start/start-tree-provider";
+import { FrankValidator } from './validation/frank-validator';
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -26,6 +27,19 @@ function activate(context: vscode.ExtensionContext) {
 	const snippetsDndController = new SnippetsDndController(context, snippetsTreeProvider, snippetsService);
 	const startService = new StartService(context);
 	const startTreeProvider = new StartTreeProvider(context, startService);
+	const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
+    context.subscriptions.push(diagnosticCollection);
+    const frankValidator = new FrankValidator(diagnosticCollection);
+
+	if (vscode.window.activeTextEditor) {
+        frankValidator.validate(vscode.window.activeTextEditor.document);
+    }
+    context.subscriptions.push(
+        vscode.workspace.onDidOpenTextDocument(doc => frankValidator.validate(doc)),
+        vscode.workspace.onDidSaveTextDocument(doc => frankValidator.validate(doc)),
+        vscode.workspace.onDidChangeTextDocument(e => frankValidator.validate(e.document)),
+        vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc))
+    );
 
 	vscode.commands.registerCommand('frank.createNewFrank', async function () {
 		const items = [
@@ -140,6 +154,26 @@ function activate(context: vscode.ExtensionContext) {
 
 	//Helper function for starting a project.
 	async function startHandler(item: any, isCurrent: boolean) {
+		const editor = vscode.window.activeTextEditor;
+        if (editor && editor.document.languageId === 'xml') {
+            frankValidator.validate(editor.document);
+            
+            const diagnostics = diagnosticCollection.get(editor.document.uri);
+            const hasErrors = diagnostics && diagnostics.some(d => d.severity === vscode.DiagnosticSeverity.Error);
+
+            if (hasErrors) {
+                const selection = await vscode.window.showErrorMessage(
+                    "Configuration contains semantic errors (e.g., missing forwards). The application may fail to start.",
+                    "Start Anyway",
+                    "Cancel"
+                );
+
+                if (selection !== "Start Anyway") {
+                    return; // Abort startup
+                }
+            }
+        }
+
 		switch (item.method) {
 			case "ant":
 				await startService.startWithAnt(item.path, isCurrent);
