@@ -51,9 +51,18 @@ export class FrankValidator {
                 const path = forward.getAttribute('path');
                 
                 if (path && !validTargets.has(path)) {
-                    // Create a diagnostic error
-                    const lineNumber = (forward as any).lineNumber - 1; // xmldom locator provides lineNumber
-                    const range = new vscode.Range(lineNumber, 0, lineNumber, 100);
+                    const lineNumber = (forward as any).lineNumber - 1; 
+                    
+                    const lineText = document.lineAt(lineNumber).text;
+                    
+                    const searchString = `path="${path}"`;
+                    
+                    const startIndex = lineText.indexOf(searchString);
+                    
+                    const startCharacter = startIndex !== -1 ? startIndex : 0;
+                    const endCharacter = startIndex !== -1 ? startIndex + searchString.length : lineText.length;
+
+                    const range = new vscode.Range(lineNumber, startCharacter, lineNumber, endCharacter);
                     
                     const diagnostic = new vscode.Diagnostic(
                         range,
