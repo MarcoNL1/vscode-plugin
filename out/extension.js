@@ -267,12 +267,13 @@ function activate(context) {
             const components = fs.readFileSync(componentsPath, 'utf8');
             targets = JSON.parse(components);
             while ((match = regex.exec(text)) !== null) {
-                for (const i in targets) {
+                targetLoop: for (const i in targets) {
                     for (const j in targets[i]) {
                         if (targets[i][j].includes(match[0])) {
                             const start = document.positionAt(match.index);
                             const end = document.positionAt(match.index + match[0].length);
                             links.push(new vscode.DocumentLink(new vscode.Range(start, end), vscode.Uri.parse(`https://frankdoc.frankframework.org/#/${i}/${j}/${match[0]}`)));
+                            break targetLoop;
                         }
                     }
                 }
