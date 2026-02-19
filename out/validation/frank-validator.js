@@ -7,7 +7,7 @@ class FrankValidator {
     constructor(collection) {
         this.diagnosticCollection = collection;
     }
-    validate(document) {
+    async validate(document) {
         if (document.languageId !== 'xml')
             return;
         const diagnostics = [];
@@ -21,16 +21,20 @@ class FrankValidator {
             }
         });
         const xmlDoc = parser.parseFromString(text, 'text/xml');
-        // Iterate over Pipelines to ensure scope (pipes in one adapter don't affect another)
+        // Phase 1: Pipeline-scoped Validation (Pipes and Forwards)
+        this.validatePipelines(xmlDoc, document, diagnostics);
+        // Attach all found diagnostics to the document
+        this.diagnosticCollection.set(document.uri, diagnostics);
+    }
+    validatePipelines(xmlDoc, document, diagnostics) {
         const pipelines = xmlDoc.getElementsByTagName('Pipeline');
         for (let i = 0; i < pipelines.length; i++) {
             const pipeline = pipelines[i];
             const validTargets = new Set();
-            // 1. Collect all valid targets (Pipe names and Exit names)
+            // 1. Collect valid targets (Pipes and Exits)
             const allElements = pipeline.getElementsByTagName('*');
             for (let j = 0; j < allElements.length; j++) {
                 const tagName = allElements[j].tagName;
-                // Check if the tag name contains "pipe" (e.g., Pipe, SenderPipe, ReceiverPipe)
                 if (tagName && tagName.toLowerCase().includes('pipe')) {
                     const name = allElements[j].getAttribute('name');
                     if (name)
@@ -43,25 +47,29 @@ class FrankValidator {
                 if (name)
                     validTargets.add(name);
             }
-            // 2. Validate Forwards
+            // 2. Validate Forwards against the targets
             const forwards = pipeline.getElementsByTagName('Forward');
             for (let k = 0; k < forwards.length; k++) {
                 const forward = forwards[k];
                 const path = forward.getAttribute('path');
                 if (path && !validTargets.has(path)) {
                     const lineNumber = forward.lineNumber - 1;
-                    const lineText = document.lineAt(lineNumber).text;
-                    const searchString = `path="${path}"`;
-                    const startIndex = lineText.indexOf(searchString);
-                    const startCharacter = startIndex !== -1 ? startIndex : 0;
-                    const endCharacter = startIndex !== -1 ? startIndex + searchString.length : lineText.length;
-                    const range = new vscode.Range(lineNumber, startCharacter, lineNumber, endCharacter);
-                    const diagnostic = new vscode.Diagnostic(range, `Invalid Forward: The path '${path}' does not exist in this Pipeline.`, vscode.DiagnosticSeverity.Error);
-                    diagnostics.push(diagnostic);
+                    this.addDiagnostic(document, diagnostics, lineNumber, `path="${path}"`, `Invalid Forward: The path '${path}' does not exist in this Pipeline.`);
                 }
             }
         }
-        this.diagnosticCollection.set(document.uri, diagnostics);
+    }
+    /**
+     * Helper method to find the exact string on a line and create a diagnostic error.
+     */
+    addDiagnostic(document, diagnostics, lineNumber, searchString, message) {
+        if (lineNumber < 0 || lineNumber >= document.lineCount)
+            return;
+        const lineText = document.lineAt(lineNumber).text;
+        const startIndex = lineText.indexOf(searchString);
+        const startCharacter = startIndex !== -1 ? startIndex : 0;
+        const endCharacter = startIndex !== -1 ? startIndex + searchString.length : lineText.length;
+        diagnostics.push(new vscode.Diagnostic(new vscode.Range(lineNumber, startCharacter, lineNumber, endCharacter), message, vscode.DiagnosticSeverity.Error));
     }
     clear(document) {
         this.diagnosticCollection.delete(document.uri);
