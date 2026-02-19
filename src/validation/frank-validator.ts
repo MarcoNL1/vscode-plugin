@@ -32,10 +32,14 @@ export class FrankValidator {
             const validTargets = new Set<string>();
 
             // 1. Collect all valid targets (Pipe names and Exit names)
-            const pipes = pipeline.getElementsByTagName('Pipe');
-            for (let j = 0; j < pipes.length; j++){
-                const name = pipes[j].getAttribute('name');
-                if (name) validTargets.add(name);
+            const allElements = pipeline.getElementsByTagName('*');
+            for (let j = 0; j < allElements.length; j++){
+                const tagName = allElements[j].tagName;
+                // Check if the tag name contains "pipe" (e.g., Pipe, SenderPipe, ReceiverPipe)
+                if (tagName && tagName.toLowerCase().includes('pipe')) {
+                    const name = allElements[j].getAttribute('name');
+                    if (name) validTargets.add(name);
+                }
             }
 
             const exits = pipeline.getElementsByTagName('Exit');
