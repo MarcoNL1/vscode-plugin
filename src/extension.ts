@@ -12,6 +12,7 @@ import { SnippetsTreeProvider } from "./snippets/snippets-tree-provider";
 import { SnippetsDndController } from "./snippets/snippets-dnd-controller";
 import { StartTreeProvider } from "./start/start-tree-provider";
 import { FrankValidator } from './validation/frank-validator';
+import { SessionKeyDefinitionProvider } from './providers/sessionKeyDefinitionProvider';
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -30,6 +31,8 @@ function activate(context: vscode.ExtensionContext) {
 	const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
     context.subscriptions.push(diagnosticCollection);
     const frankValidator = new FrankValidator(diagnosticCollection);
+	const sessionKeyProvider = new SessionKeyDefinitionProvider();
+	const documentSelector: vscode.DocumentSelector = { language: 'xml', scheme: 'file' };
 
 	if (vscode.window.activeTextEditor) {
         frankValidator.validate(vscode.window.activeTextEditor.document);
@@ -38,7 +41,8 @@ function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidOpenTextDocument(doc => frankValidator.validate(doc)),
         vscode.workspace.onDidSaveTextDocument(doc => frankValidator.validate(doc)),
         vscode.workspace.onDidChangeTextDocument(e => frankValidator.validate(e.document)),
-        vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc))
+        vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)),
+		vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider)
     );
 
 	vscode.commands.registerCommand('frank.createNewFrank', async function () {
