@@ -69,7 +69,7 @@ export class FrankValidator {
                         diagnostics, 
                         lineNumber, 
                         `path="${path}"`, 
-                        `Invalid Forward: The path '${path}' does not exist in this Pipeline.`
+                        `Invalid Forward: The path '${path}' does not exist.`
                     );
                 }
             }

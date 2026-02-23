@@ -54,7 +54,7 @@ class FrankValidator {
                 const path = forward.getAttribute('path');
                 if (path && !validTargets.has(path)) {
                     const lineNumber = forward.lineNumber - 1;
-                    this.addDiagnostic(document, diagnostics, lineNumber, `path="${path}"`, `Invalid Forward: The path '${path}' does not exist in this Pipeline.`);
+                    this.addDiagnostic(document, diagnostics, lineNumber, `path="${path}"`, `Invalid Forward: The path '${path}' does not exist.`);
                 }
             }
         }
