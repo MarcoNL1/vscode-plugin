@@ -12,7 +12,7 @@ import { SnippetsTreeProvider } from "./snippets/snippets-tree-provider";
 import { SnippetsDndController } from "./snippets/snippets-dnd-controller";
 import { StartTreeProvider } from "./start/start-tree-provider";
 import { FrankValidator } from './validation/frank-validator';
-import { SessionKeyDefinitionProvider } from './providers/sessionKeyDefinitionProvider';
+import { SessionKeyDefinitionProvider } from './navigation/sessionKeyDefinitionProvider';
 
 /**
  * @param {vscode.ExtensionContext} context
