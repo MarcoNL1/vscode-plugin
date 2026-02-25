@@ -14,7 +14,7 @@ const snippets_tree_provider_1 = require("./snippets/snippets-tree-provider");
 const snippets_dnd_controller_1 = require("./snippets/snippets-dnd-controller");
 const start_tree_provider_1 = require("./start/start-tree-provider");
 const frank_validator_1 = require("./validation/frank-validator");
-const sessionKeyDefinitionProvider_1 = require("./providers/sessionKeyDefinitionProvider");
+const sessionKeyDefinitionProvider_1 = require("./navigation/sessionKeyDefinitionProvider");
 /**
  * @param {vscode.ExtensionContext} context
 */
