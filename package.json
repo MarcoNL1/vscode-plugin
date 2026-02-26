@@ -19,7 +19,7 @@
     "Other"
   ],
   "activationEvents": [
-    "*"
+    "onLanguage:xml"
   ],
   "main": "./out/extension.js",
   "contributes": {
