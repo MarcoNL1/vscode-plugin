@@ -13,7 +13,7 @@
     "url": "https://github.com/wearefrank/vscode-plugin.git"
   },
   "engines": {
-    "vscode": "^1.107.0"
+    "vscode": "^1.109.0"
   },
   "categories": [
     "Other"
