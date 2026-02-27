@@ -207,10 +207,8 @@ function activate(context) {
     //Init flowchart view.
     const flowViewProvider = new flow_view_provider_1.default(context);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('flowView', flowViewProvider));
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
-        if (editor && editor.document.languageId === "xml") {
-            flowViewProvider.updateWebview();
-        }
+    vscode.window.onDidChangeActiveTextEditor(() => {
+        flowViewProvider.updateWebview();
     });
     vscode.workspace.onDidSaveTextDocument((document) => {
         if (document.languageId === "xml") {

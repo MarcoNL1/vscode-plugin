@@ -253,10 +253,8 @@ function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider('flowView', flowViewProvider)
 	);
-	vscode.window.onDidChangeActiveTextEditor((editor) => {
-		if (editor && editor.document.languageId === "xml") {
+	vscode.window.onDidChangeActiveTextEditor(() => {		
 			flowViewProvider.updateWebview();
-		}
 	});
 	vscode.workspace.onDidSaveTextDocument((document) => {
 		if (document.languageId === "xml") {

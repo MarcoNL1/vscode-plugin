@@ -22,7 +22,7 @@ class FlowViewProvider {
             return;
         }
         const editor = vscode.window.activeTextEditor;
-        if (!editor) {
+        if (!editor || editor.document.languageId !== "xml" || editor.document.fileName.endsWith(".xsd")) {
             this.webView.webview.html = getOpenedWithEmptyEditorWebviewContent();
             return;
         }
