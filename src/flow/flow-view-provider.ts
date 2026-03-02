@@ -36,6 +36,17 @@ export default class FlowViewProvider {
 
       const config = getCurrentConfiguration();
 
+      if  (!config) {
+        return;
+      }
+
+      const isAggregatorConfig = /<!ENTITY\s+[\w.-]+\s+SYSTEM\s+["'][^"']+["']\s*>/i.test(config);
+
+      if (isAggregatorConfig) {
+          this.webView.webview.html = getAggregatorWebviewContent();
+          return;
+      }
+
       const parser = new (global as any).DOMParser();
       const xml = parser.parseFromString(config, "text/xml");
 
@@ -235,6 +246,35 @@ function getOpenedWithEmptyEditorWebviewContent() {
     <body>
         <h2>Hello!</h2>
         <p>Open a Frank!Configuration to get started :)</p>
+    </body>
+    </html>
+    `;
+}
+
+function getAggregatorWebviewContent() {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Flowchart</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                color: var(--vscode-errorForeground);
+                padding: 10px;
+            }
+            pre {
+                background: var(--vscode-editorWidget-background);
+                border-left: 4px solid var(--vscode-errorForeground);
+                padding: 5px;
+                white-space: pre-wrap;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Info</h2>
+        <p>This file combines multiple sub-configurations. Open a specific configuration to get started.</p>
     </body>
     </html>
     `;
