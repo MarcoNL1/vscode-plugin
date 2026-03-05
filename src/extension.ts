@@ -13,6 +13,8 @@ import { SnippetsDndController } from "./snippets/snippets-dnd-controller";
 import { StartTreeProvider } from "./start/start-tree-provider";
 import { FrankValidator } from './validation/frank-validator';
 import { SessionKeyDefinitionProvider } from './navigation/sessionKeyDefinitionProvider';
+import { FrankRenameProvider } from './rename/frankRenameProvider';
+
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -33,6 +35,8 @@ function activate(context: vscode.ExtensionContext) {
     const frankValidator = new FrankValidator(diagnosticCollection);
 	const sessionKeyProvider = new SessionKeyDefinitionProvider();
 	const documentSelector: vscode.DocumentSelector = { language: 'xml', scheme: 'file' };
+	const frankRenameProvider = new FrankRenameProvider();
+
 
 	if (vscode.window.activeTextEditor) {
         frankValidator.validate(vscode.window.activeTextEditor.document);
@@ -42,7 +46,8 @@ function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidSaveTextDocument(doc => frankValidator.validate(doc)),
         vscode.workspace.onDidChangeTextDocument(e => frankValidator.validate(e.document)),
         vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)),
-		vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider)
+		vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider),
+		vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider)
     );
 
 	vscode.commands.registerCommand('frank.createNewFrank', async function () {
