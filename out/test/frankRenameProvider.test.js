@@ -5,7 +5,6 @@ const assert = require("assert");
 const vscode = require("vscode");
 const frankRenameProvider_1 = require("../rename/frankRenameProvider");
 suite('FrankRenameProvider Test Suite', () => {
-    vscode.window.showInformationMessage('Start all tests for FrankRenameProvider.');
     const provider = new frankRenameProvider_1.FrankRenameProvider();
     // A simplified mock for TextDocument, specifically tuned for our use-case
     function createMockDocument(content) {

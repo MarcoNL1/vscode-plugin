@@ -4,7 +4,6 @@ import * as vscode from 'vscode';
 import { FrankRenameProvider } from '../rename/frankRenameProvider';
 
 suite('FrankRenameProvider Test Suite', () => {
-    vscode.window.showInformationMessage('Start all tests for FrankRenameProvider.');
 
     const provider = new FrankRenameProvider();
 
