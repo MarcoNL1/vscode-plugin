@@ -1,7 +1,7 @@
 import 'mocha';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { FrankRenameProvider } from '../src/rename/frankRenameProvider';
+import { FrankRenameProvider } from '../rename/frankRenameProvider';
 
 suite('FrankRenameProvider Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests for FrankRenameProvider.');

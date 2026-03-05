@@ -4,10 +4,10 @@
 		"target": "es2020",
 		"outDir": "out",
 		"rootDir": "src",
-		"types": ["node"],
+		"types": ["node", "mocha"],
 		"lib": ["es2020"],
 		"sourceMap": true,
 		"strict": true
 	},
-	"exclude": ["node_modules", ".vscode-test", "test"]
+	"exclude": ["node_modules", ".vscode-test"]
 }

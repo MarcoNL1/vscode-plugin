@@ -19,6 +19,9 @@ export default [
                 ...globals.node,
                 ...globals.mocha,
                 ...globals.browser,
+                acquireVsCodeApi: "readonly",
+                svgPanZoom: "readonly",
+                container: "readonly"
             },
 
             ecmaVersion: 2022,
