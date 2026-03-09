@@ -1,0 +1,36 @@
+@startuml contextDiagram
+!theme plain
+
+actor "Developer" as User
+
+rectangle "VS Code" {
+    component "Frank!Framework Extension" as Extension
+}
+
+rectangle "External Tools & Resources" {
+    component "Frank!Runner" as Runner
+    component "Frank!Doc" as Documentation
+    component "Frank!Framework Wiki" as Wiki
+    component "Docker / Docker Compose" as Docker
+    component "Apache Ant" as Ant
+}
+
+User -> Extension : Interacts with
+
+Extension ..> Runner : Runs Frank projects
+Extension ..> Docker : Deploys via
+Extension ..> Ant : Executes build scripts
+Extension ..> Documentation : Links component docs
+Extension ..> Wiki : Fetches snippets
+
+note right of Extension
+  **Features:**
+  * Open/Create new Frank projects
+  * Run Frank (Ant, Docker, Docker Compose)
+  * Manage Frank!Framework versions
+  * Visualize Configuration Flowchart
+  * Manage/Insert Snippets (Wiki & User)
+  * Link to Frank!Doc
+end note
+
+@enduml
