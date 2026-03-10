@@ -160,7 +160,7 @@ function getOpenedWithEmptyEditorWebviewContent() {
         <style>
             body {
                 font-family: sans-serif;
-                color: var(--vscode-errorForeground);
+                color: var(--vscode-textLink-foreground);
                 padding: 10px;
             }
             pre {
@@ -188,7 +188,7 @@ function getAggregatorWebviewContent() {
         <style>
             body {
                 font-family: sans-serif;
-                color: var(--vscode-errorForeground);
+                color: var(--vscode-list-warningForeground);
                 padding: 10px;
             }
             pre {
