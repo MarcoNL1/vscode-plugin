@@ -16,6 +16,7 @@ const start_tree_provider_1 = require("./start/start-tree-provider");
 const frank_validator_1 = require("./validation/frank-validator");
 const sessionKeyDefinitionProvider_1 = require("./navigation/sessionKeyDefinitionProvider");
 const frankRenameProvider_1 = require("./rename/frankRenameProvider");
+const pipeReferenceProvider_1 = require("./references/pipeReferenceProvider");
 /**
  * @param {vscode.ExtensionContext} context
 */
@@ -34,10 +35,11 @@ function activate(context) {
     const sessionKeyProvider = new sessionKeyDefinitionProvider_1.SessionKeyDefinitionProvider();
     const documentSelector = { language: 'xml', scheme: 'file' };
     const frankRenameProvider = new frankRenameProvider_1.FrankRenameProvider();
+    const pipeReferenceProvider = new pipeReferenceProvider_1.PipeReferenceProvider();
     if (vscode.window.activeTextEditor) {
         frankValidator.validate(vscode.window.activeTextEditor.document);
     }
-    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidSaveTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidChangeTextDocument(e => frankValidator.validate(e.document)), vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)), vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider));
+    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidSaveTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidChangeTextDocument(e => frankValidator.validate(e.document)), vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)), vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider), vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider));
     vscode.commands.registerCommand('frank.createNewFrank', async function () {
         const items = [
             {

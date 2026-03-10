@@ -6,7 +6,7 @@ const vscode = require("vscode");
 const frankRenameProvider_1 = require("../rename/frankRenameProvider");
 suite('FrankRenameProvider Test Suite', () => {
     const provider = new frankRenameProvider_1.FrankRenameProvider();
-    // A simplified mock for TextDocument, specifically tuned for our use-case
+    // A simplified mock for TextDocument
     function createMockDocument(content) {
         const lines = content.split('\n');
         return {
@@ -21,7 +21,7 @@ suite('FrankRenameProvider Test Suite', () => {
             lineCount: lines.length,
             positionAt: (offset) => new vscode.Position(0, 0), // Dummy implementation
             uri: vscode.Uri.parse('untitled:test.xml'),
-            // Mock getWordRangeAtPosition just like VS Code would do for our regex
+            // Mock getWordRangeAtPosition
             getWordRangeAtPosition: (position, regex) => {
                 const line = lines[position.line];
                 let match;
@@ -36,7 +36,7 @@ suite('FrankRenameProvider Test Suite', () => {
                 }
                 return undefined;
             }
-        }; // Cast to any to avoid implementing all TextDocument functions
+        };
     }
     test('prepareRename - Valid cursor position on "name" attribute', () => {
         const xml = `<Pipe name="TestPipe" />`;
