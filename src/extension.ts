@@ -14,6 +14,7 @@ import { StartTreeProvider } from "./start/start-tree-provider";
 import { FrankValidator } from './validation/frank-validator';
 import { SessionKeyDefinitionProvider } from './navigation/sessionKeyDefinitionProvider';
 import { FrankRenameProvider } from './rename/frankRenameProvider';
+import { FrankRenameHintProvider } from './rename/frankRenameHintProvider';
 import { PipeReferenceProvider } from './references/pipeReferenceProvider';
 
 
@@ -37,6 +38,8 @@ function activate(context: vscode.ExtensionContext) {
 	const sessionKeyProvider = new SessionKeyDefinitionProvider();
 	const documentSelector: vscode.DocumentSelector = { language: 'xml', scheme: 'file' };
 	const frankRenameProvider = new FrankRenameProvider();
+	const frankRenameHintProvider = new FrankRenameHintProvider();
+	frankRenameHintProvider.register(context);
 	const pipeReferenceProvider = new PipeReferenceProvider();
 
 

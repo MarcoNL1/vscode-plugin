@@ -16,6 +16,7 @@ const start_tree_provider_1 = require("./start/start-tree-provider");
 const frank_validator_1 = require("./validation/frank-validator");
 const sessionKeyDefinitionProvider_1 = require("./navigation/sessionKeyDefinitionProvider");
 const frankRenameProvider_1 = require("./rename/frankRenameProvider");
+const frankRenameHintProvider_1 = require("./rename/frankRenameHintProvider");
 const pipeReferenceProvider_1 = require("./references/pipeReferenceProvider");
 /**
  * @param {vscode.ExtensionContext} context
@@ -35,6 +36,8 @@ function activate(context) {
     const sessionKeyProvider = new sessionKeyDefinitionProvider_1.SessionKeyDefinitionProvider();
     const documentSelector = { language: 'xml', scheme: 'file' };
     const frankRenameProvider = new frankRenameProvider_1.FrankRenameProvider();
+    const frankRenameHintProvider = new frankRenameHintProvider_1.FrankRenameHintProvider();
+    frankRenameHintProvider.register(context);
     const pipeReferenceProvider = new pipeReferenceProvider_1.PipeReferenceProvider();
     if (vscode.window.activeTextEditor) {
         frankValidator.validate(vscode.window.activeTextEditor.document);
