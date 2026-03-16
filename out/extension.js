@@ -16,6 +16,7 @@ const start_tree_provider_1 = require("./start/start-tree-provider");
 const frank_validator_1 = require("./validation/frank-validator");
 const sessionKeyDefinitionProvider_1 = require("./navigation/sessionKeyDefinitionProvider");
 const frankRenameProvider_1 = require("./rename/frankRenameProvider");
+const sessionKeyRenameProvider_1 = require("./rename/sessionKeyRenameProvider");
 const frankRenameHintProvider_1 = require("./rename/frankRenameHintProvider");
 const pipeReferenceProvider_1 = require("./references/pipeReferenceProvider");
 /**
@@ -36,13 +37,14 @@ function activate(context) {
     const sessionKeyProvider = new sessionKeyDefinitionProvider_1.SessionKeyDefinitionProvider();
     const documentSelector = { language: 'xml', scheme: 'file' };
     const frankRenameProvider = new frankRenameProvider_1.FrankRenameProvider();
+    const sessionKeyRenameProvider = new sessionKeyRenameProvider_1.SessionKeyRenameProvider();
     const frankRenameHintProvider = new frankRenameHintProvider_1.FrankRenameHintProvider();
     frankRenameHintProvider.register(context);
     const pipeReferenceProvider = new pipeReferenceProvider_1.PipeReferenceProvider();
     if (vscode.window.activeTextEditor) {
         frankValidator.validate(vscode.window.activeTextEditor.document);
     }
-    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidSaveTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidChangeTextDocument(e => frankValidator.validate(e.document)), vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)), vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider), vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider));
+    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidSaveTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidChangeTextDocument(e => frankValidator.validate(e.document)), vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)), vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider), vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider), vscode.languages.registerRenameProvider(documentSelector, sessionKeyRenameProvider));
     vscode.commands.registerCommand('frank.createNewFrank', async function () {
         const items = [
             {

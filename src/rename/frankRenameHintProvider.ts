@@ -29,7 +29,7 @@ export class FrankRenameHintProvider {
             const lineText = editor.document.lineAt(position.line).text;
 
             // Quick, lightweight check: are we on a name= or path= attribute?
-            const regex = /(?:name|path)=["']([^"']+)["']/g;
+            const regex = /(?:name|path|[sS]essionKey)=["']([^"']+)["']/g;
             let match;
             let showHint = false;
 

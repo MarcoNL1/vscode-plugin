@@ -14,6 +14,7 @@ import { StartTreeProvider } from "./start/start-tree-provider";
 import { FrankValidator } from './validation/frank-validator';
 import { SessionKeyDefinitionProvider } from './navigation/sessionKeyDefinitionProvider';
 import { FrankRenameProvider } from './rename/frankRenameProvider';
+import { SessionKeyRenameProvider } from './rename/sessionKeyRenameProvider';
 import { FrankRenameHintProvider } from './rename/frankRenameHintProvider';
 import { PipeReferenceProvider } from './references/pipeReferenceProvider';
 
@@ -38,6 +39,7 @@ function activate(context: vscode.ExtensionContext) {
 	const sessionKeyProvider = new SessionKeyDefinitionProvider();
 	const documentSelector: vscode.DocumentSelector = { language: 'xml', scheme: 'file' };
 	const frankRenameProvider = new FrankRenameProvider();
+	const sessionKeyRenameProvider = new SessionKeyRenameProvider();
 	const frankRenameHintProvider = new FrankRenameHintProvider();
 	frankRenameHintProvider.register(context);
 	const pipeReferenceProvider = new PipeReferenceProvider();
@@ -55,7 +57,8 @@ function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)),
 		vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider),
 		vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider),
-		vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider)
+		vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider),
+		vscode.languages.registerRenameProvider(documentSelector, sessionKeyRenameProvider)
     );
 
 	vscode.commands.registerCommand('frank.createNewFrank', async function () {
