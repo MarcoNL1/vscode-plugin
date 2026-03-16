@@ -91,79 +91,78 @@ export default class FlowViewProvider {
         isAdapter ? "adapter2mermaid" : "configuration2mermaid"
       );
       
-      const paramsUri = vscode.Uri.joinPath(
-        this.context.extensionUri, 
-        "resources", "flow", "xml", "params.xml"
-      );
-      
-      let params = "";
-      try {
-        // Asynchronously read the file using VS Code's workspace file system API
-        // This prevents blocking the single-threaded Extension Host
-        const paramsData = await vscode.workspace.fs.readFile(paramsUri);
-        
-        params = Buffer.from(paramsData).toString('utf8');
-      } catch (err) {
-        console.error("[WeAreFrank!] Failed to load internal params.xml resource:", err);
-        this.webView.webview.html = getErrorWebviewContent("Internal error: Could not load flow parameters.");
-        return;
-      }
+      const paramsPath = path.join(this.context.extensionPath, "resources/flow/xml/params.xml");
 
-      const mermaid = SaxonJS.transform({
-        stylesheetText: mermaidSef,
-        sourceText: canoncalizedXml.principalResult,
-        destination: "serialized",
-        stylesheetParams: {
-          frankElements: paramsXdm
+      try {
+          const paramsBuffer = await vscode.workspace.fs.readFile(vscode.Uri.file(paramsPath));
+          const paramsContent = Buffer.from(paramsBuffer).toString('utf8');
+
+          const paramsXdm: any = await SaxonJS.getResource({
+              type: "xml",
+              text: paramsContent
+          });
+
+          const mermaid = SaxonJS.transform({
+              stylesheetText: mermaidSef,
+              sourceText: canoncalizedXml.principalResult,
+              destination: "serialized",
+              stylesheetParams: {
+                  frankElements: paramsXdm
+              }
+          });
+
+            const css = this.webView.webview.asWebviewUri(
+              vscode.Uri.joinPath(
+                this.context.extensionUri,
+                'resources',
+                'css',
+                'flow-view-webcontent.css'
+              )
+            );
+
+            const codiconCss = this.webView.webview.asWebviewUri(
+              vscode.Uri.joinPath(
+                this.context.extensionUri,
+                'resources',
+                'css',
+                'codicon.css'
+              )
+            );
+
+            const script = this.webView.webview.asWebviewUri(
+              vscode.Uri.joinPath(
+                this.context.extensionUri,
+                'src',
+                'flow',
+                'flow-view-script.js'
+              )
+            );
+
+            const zoomScript = this.webView.webview.asWebviewUri(
+              vscode.Uri.joinPath(
+                this.context.extensionUri,
+                'node_modules',
+                'svg-pan-zoom',
+                'dist',
+                'svg-pan-zoom.min.js'
+              )
+            );
+
+            try {
+              frankLayout.initMermaid2Svg(frankLayout.getFactoryDimensions());
+              const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
+
+              this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
+            } catch (err) {
+              this.webView.webview.html = getErrorWebviewContent("This file is not recognized as a Frank!Configuration");
+            }
+          }
+          catch (error) {
+          console.error("Failed to process SaxonJS resources:", error);
+          this.webView.webview.html = getErrorWebviewContent("Internal transformation error: missing resources.");
+          return;
         }
-      });
-
-      const css = this.webView.webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          this.context.extensionUri,
-          'resources',
-          'css',
-          'flow-view-webcontent.css'
-        )
-      );
-
-      const codiconCss = this.webView.webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          this.context.extensionUri,
-          'resources',
-          'css',
-          'codicon.css'
-        )
-      );
-
-      const script = this.webView.webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          this.context.extensionUri,
-          'src',
-          'flow',
-          'flow-view-script.js'
-        )
-      );
-
-      const zoomScript = this.webView.webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          this.context.extensionUri,
-          'node_modules',
-          'svg-pan-zoom',
-          'dist',
-          'svg-pan-zoom.min.js'
-        )
-      );
-
-      try {
-        frankLayout.initMermaid2Svg(frankLayout.getFactoryDimensions());
-        const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
-
-        this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
-      } catch (err) {
-        this.webView.webview.html = getErrorWebviewContent("This file is not recognized as a Frank!Configuration");
       }
-    }
 }
 
 function convertXSLtoSEF(context: any, xsl: any) {
