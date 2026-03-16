@@ -98,16 +98,25 @@ export default class FlowViewProvider {
         this.context,
         isAdapter ? "adapter2mermaid" : "configuration2mermaid"
       );
-
-      const paramsPath = path.join(this.context.extensionPath, "resources/flow/xml/params.xml");
       
-      // Keeping this sync for now as it loads an internal extension resource, 
-      // but refactor this to async fs.promises.readFile in your next iteration.
-      const params = fs.readFileSync(paramsPath, 'utf8');
-      const paramsXdm = await SaxonJS.getResource({
-        type: "xml",
-        text: params
-      });
+      const paramsUri = vscode.Uri.joinPath(
+        this.context.extensionUri, 
+        "resources", "flow", "xml", "params.xml"
+      );
+      
+      let params = "";
+      try {
+        // Asynchronously read the file using VS Code's workspace file system API
+        // This prevents blocking the single-threaded Extension Host
+        const paramsData = await vscode.workspace.fs.readFile(paramsUri);
+        
+        // Convert the returned Uint8Array to a UTF-8 string
+        params = Buffer.from(paramsData).toString('utf8');
+      } catch (err) {
+        console.error("[WeAreFrank!] Failed to load internal params.xml resource:", err);
+        this.webView.webview.html = getErrorWebviewContent("Internal error: Could not load flow parameters.");
+        return;
+      }
 
       const mermaid = SaxonJS.transform({
         stylesheetText: mermaidSef,
