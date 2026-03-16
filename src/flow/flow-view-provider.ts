@@ -41,8 +41,6 @@ export default class FlowViewProvider {
       }
 
       // Process local SYSTEM entities to resolve aggregator configurations automatically.
-      // Note: Parsing XML with Regex is generally an anti-pattern, but necessary here 
-      // because JSDOM's DOMParser blocks external file-system entity resolution by default.
       const entityRegex = /<!ENTITY\s+([\w.-]+)\s+SYSTEM\s+["']([^"']+)["']\s*>/gi;
       let match;
       const dir = path.dirname(editor.document.fileName);
@@ -60,13 +58,9 @@ export default class FlowViewProvider {
               // Strip XML declarations from injected files to maintain a valid overall XML document
               entityContent = entityContent.replace(/<\?xml[^>]*\?>/gi, '');
               
-              // Always use a callback function for the replacement string. 
-              // Frank! configurations contain variables like ${property}, which standard replace 
-              // might incorrectly parse as Regex capture group references if they contain $ signs.
               config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
           } catch (error) {
               console.error(`[WeAreFrank!] Entity resolution failed for ${entityName} at ${relativePath}`, error);
-              // We intentionally continue the loop; a single missing file shouldn't break the entire parsing tree immediately.
           }
       }
 
@@ -89,8 +83,6 @@ export default class FlowViewProvider {
         destination: "serialized"
       });
 
-      // Robust check using the actual DOM tree instead of brittle string splitting
-      // If the document contains adapters, we map it as an adapter flowchart.
       const isAdapter = xml.documentElement.nodeName.toLowerCase() === 'adapter' || 
                         xml.getElementsByTagName("adapter").length > 0;
 
@@ -110,7 +102,6 @@ export default class FlowViewProvider {
         // This prevents blocking the single-threaded Extension Host
         const paramsData = await vscode.workspace.fs.readFile(paramsUri);
         
-        // Convert the returned Uint8Array to a UTF-8 string
         params = Buffer.from(paramsData).toString('utf8');
       } catch (err) {
         console.error("[WeAreFrank!] Failed to load internal params.xml resource:", err);
@@ -284,35 +275,6 @@ function getOpenedWithEmptyEditorWebviewContent() {
     <body>
         <h2>Hello!</h2>
         <p>Open a Frank!Configuration to get started :)</p>
-    </body>
-    </html>
-    `;
-}
-
-function getAggregatorWebviewContent() {
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Flowchart</title>
-        <style>
-            body {
-                font-family: sans-serif;
-                color: var(--vscode-list-warningForeground);
-                padding: 10px;
-            }
-            pre {
-                background: var(--vscode-editorWidget-background);
-                border-left: 4px solid var(--vscode-errorForeground);
-                padding: 5px;
-                white-space: pre-wrap;
-            }
-        </style>
-    </head>
-    <body>
-        <h2>Info</h2>
-        <p>This file combines multiple sub-configurations. Open a specific configuration to get started.</p>
     </body>
     </html>
     `;
