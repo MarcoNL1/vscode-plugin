@@ -34,17 +34,40 @@ export default class FlowViewProvider {
         return;
       }
 
-      const config = getCurrentConfiguration();
+      let config = getCurrentConfiguration();
 
-      if  (!config) {
+      if (!config) {
         return;
       }
 
-      const isAggregatorConfig = /<!ENTITY\s+[\w.-]+\s+SYSTEM\s+["'][^"']+["']\s*>/i.test(config);
+      // Process local SYSTEM entities to resolve aggregator configurations automatically.
+      // Note: Parsing XML with Regex is generally an anti-pattern, but necessary here 
+      // because JSDOM's DOMParser blocks external file-system entity resolution by default.
+      const entityRegex = /<!ENTITY\s+([\w.-]+)\s+SYSTEM\s+["']([^"']+)["']\s*>/gi;
+      let match;
+      const dir = path.dirname(editor.document.fileName);
 
-      if (isAggregatorConfig) {
-          this.webView.webview.html = getAggregatorWebviewContent();
-          return;
+      while ((match = entityRegex.exec(config)) !== null) {
+          const entityName = match[1];
+          const relativePath = match[2];
+          try {
+              const entityUri = vscode.Uri.file(path.join(dir, relativePath));
+              
+              // Use VS Code's async workspace API to prevent blocking the Extension Host
+              const fileData = await vscode.workspace.fs.readFile(entityUri);
+              let entityContent = Buffer.from(fileData).toString('utf8');
+              
+              // Strip XML declarations from injected files to maintain a valid overall XML document
+              entityContent = entityContent.replace(/<\?xml[^>]*\?>/gi, '');
+              
+              // Always use a callback function for the replacement string. 
+              // Frank! configurations contain variables like ${property}, which standard replace 
+              // might incorrectly parse as Regex capture group references if they contain $ signs.
+              config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
+          } catch (error) {
+              console.error(`[WeAreFrank!] Entity resolution failed for ${entityName} at ${relativePath}`, error);
+              // We intentionally continue the loop; a single missing file shouldn't break the entire parsing tree immediately.
+          }
       }
 
       const parser = new (global as any).DOMParser();
@@ -66,7 +89,10 @@ export default class FlowViewProvider {
         destination: "serialized"
       });
 
-      const isAdapter = config?.split("\n")[0].includes("adapter");
+      // Robust check using the actual DOM tree instead of brittle string splitting
+      // If the document contains adapters, we map it as an adapter flowchart.
+      const isAdapter = xml.documentElement.nodeName.toLowerCase() === 'adapter' || 
+                        xml.getElementsByTagName("adapter").length > 0;
 
       const mermaidSef = convertXSLtoSEF(
         this.context,
@@ -74,6 +100,9 @@ export default class FlowViewProvider {
       );
 
       const paramsPath = path.join(this.context.extensionPath, "resources/flow/xml/params.xml");
+      
+      // Keeping this sync for now as it loads an internal extension resource, 
+      // but refactor this to async fs.promises.readFile in your next iteration.
       const params = fs.readFileSync(paramsPath, 'utf8');
       const paramsXdm = await SaxonJS.getResource({
         type: "xml",
