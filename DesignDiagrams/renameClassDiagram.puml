@@ -1,0 +1,25 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+interface vscode.RenameProvider <<interface>> {
+    +provideRenameEdits()
+    +prepareRename()
+}
+
+class FrankRenameProvider {
+    -frankValidator: FrankValidator
+    +provideRenameEdits(document: TextDocument, position: Position, newName: string, token: CancellationToken): ProviderResult<WorkspaceEdit>
+    +prepareRename(document: TextDocument, position: Position, token: CancellationToken): ProviderResult<Range>
+}
+
+class SessionKeyRenameProvider {
+    +provideRenameEdits(...)
+}
+
+class FrankRenameHintProvider {
+    +provideInlayHints(...)
+}
+
+vscode.RenameProvider <|.. FrankRenameProvider
+FrankRenameProvider --> SessionKeyRenameProvider : delegates sessionKey logic
+@enduml
