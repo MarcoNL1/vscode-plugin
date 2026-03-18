@@ -40,27 +40,46 @@ export default class FlowViewProvider {
         return;
       }
 
-      // Process local SYSTEM entities to resolve aggregator configurations automatically.
-      const entityRegex = /<!ENTITY\s+([\w.-]+)\s+SYSTEM\s+["']([^"']+)["']\s*>/gi;
-      let match;
       const dir = path.dirname(editor.document.fileName);
 
-      while ((match = entityRegex.exec(config)) !== null) {
+      // Process local SYSTEM entities to resolve aggregator configurations automatically.
+      // We extract all matches first using matchAll to prevent RegExp state corruption 
+      // caused by modifying the string length during iteration.
+      const entityMatches = [...config.matchAll(/<!ENTITY\s+([\w.-]+)\s+SYSTEM\s+["']([^"']+)["']\s*>/gi)];
+      
+      for (const match of entityMatches) {
           const entityName = match[1];
           const relativePath = match[2];
           try {
               const entityUri = vscode.Uri.file(path.join(dir, relativePath));
-              
-              // Use VS Code's async workspace API to prevent blocking the Extension Host
               const fileData = await vscode.workspace.fs.readFile(entityUri);
               let entityContent = Buffer.from(fileData).toString('utf8');
               
-              // Strip XML declarations from injected files to maintain a valid overall XML document
+              // Strip XML declarations to prevent invalidating the master document
               entityContent = entityContent.replace(/<\?xml[^>]*\?>/gi, '');
-              
               config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
           } catch (error) {
               console.error(`[WeAreFrank!] Entity resolution failed for ${entityName} at ${relativePath}`, error);
+          }
+      }
+
+      const includeMatches = [...config.matchAll(/<Include\s+ref=["']([^"']+)["']\s*\/>/gi)];
+      
+      for (const match of includeMatches) {
+          const fullMatch = match[0];
+          const relativePath = match[1];
+          try {
+              const includeUri = vscode.Uri.file(path.join(dir, relativePath));
+              const fileData = await vscode.workspace.fs.readFile(includeUri);
+              let includeContent = Buffer.from(fileData).toString('utf8');
+              
+              // Strip XML declarations from injected files
+              includeContent = includeContent.replace(/<\?xml[^>]*\?>/gi, '');
+              
+              // Replace the specific <Include ... /> tag with the fetched file content
+              config = config.replace(fullMatch, () => includeContent);
+          } catch (error) {
+              console.error(`[WeAreFrank!] Include resolution failed for ${relativePath}`, error);
           }
       }
 
