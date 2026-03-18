@@ -58,8 +58,12 @@ export default class FlowViewProvider {
               // Strip XML declarations to prevent invalidating the master document
               entityContent = entityContent.replace(/<\?xml[^>]*\?>/gi, '');
               config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
-          } catch (error) {
-              console.error(`[WeAreFrank!] Entity resolution failed for ${entityName} at ${relativePath}`, error);
+          } catch (error: any) {
+              const errorMsg = `Unable to load entity '&${entityName};'. File '${relativePath}' is missing or unreadable.`;
+              console.error(`[WeAreFrank!] ${errorMsg}`, error);
+              
+              // Warn the user via the UI, but do not break the flow rendering completely
+              vscode.window.showWarningMessage(`WeAreFrank! Flow: ${errorMsg}`);
           }
       }
 
@@ -78,8 +82,11 @@ export default class FlowViewProvider {
               
               // Replace the specific <Include ... /> tag with the fetched file content
               config = config.replace(fullMatch, () => includeContent);
-          } catch (error) {
-              console.error(`[WeAreFrank!] Include resolution failed for ${relativePath}`, error);
+          } catch (error: any) {
+              const errorMsg = `Unable to resolve Include reference. File '${relativePath}' is missing or unreadable.`;
+              console.error(`[WeAreFrank!] ${errorMsg}`, error);
+              
+              vscode.window.showWarningMessage(`Frank!Flow: ${errorMsg}`);
           }
       }
 
@@ -172,8 +179,13 @@ export default class FlowViewProvider {
               const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
 
               this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
-            } catch (err) {
-              this.webView.webview.html = getErrorWebviewContent("This file is not recognized as a Frank!Configuration");
+            } catch (err: any) {
+              const errorMessage = err instanceof Error ? err.message : String(err);
+              console.error("[WeAreFrank!] Rendering failed:", err);
+              
+              this.webView.webview.html = getErrorWebviewContent(
+                  `Failed to generate the flow.\nPlease check your configuration syntax.\n\nDetails:\n${errorMessage}`
+              );
             }
           }
           catch (error) {

@@ -46,7 +46,10 @@ class FlowViewProvider {
                 config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
             }
             catch (error) {
-                console.error(`[WeAreFrank!] Entity resolution failed for ${entityName} at ${relativePath}`, error);
+                const errorMsg = `Unable to load entity '&${entityName};'. File '${relativePath}' is missing or unreadable.`;
+                console.error(`[WeAreFrank!] ${errorMsg}`, error);
+                // Warn the user via the UI, but do not break the flow rendering completely
+                vscode.window.showWarningMessage(`WeAreFrank! Flow: ${errorMsg}`);
             }
         }
         const includeMatches = [...config.matchAll(/<Include\s+ref=["']([^"']+)["']\s*\/>/gi)];
@@ -63,7 +66,9 @@ class FlowViewProvider {
                 config = config.replace(fullMatch, () => includeContent);
             }
             catch (error) {
-                console.error(`[WeAreFrank!] Include resolution failed for ${relativePath}`, error);
+                const errorMsg = `Unable to resolve Include reference. File '${relativePath}' is missing or unreadable.`;
+                console.error(`[WeAreFrank!] ${errorMsg}`, error);
+                vscode.window.showWarningMessage(`Frank!Flow: ${errorMsg}`);
             }
         }
         const parser = new global.DOMParser();
@@ -109,7 +114,9 @@ class FlowViewProvider {
                 this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
             }
             catch (err) {
-                this.webView.webview.html = getErrorWebviewContent("This file is not recognized as a Frank!Configuration");
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                console.error("[WeAreFrank!] Rendering failed:", err);
+                this.webView.webview.html = getErrorWebviewContent(`Failed to generate the flow.\nPlease check your configuration syntax.\n\nDetails:\n${errorMessage}`);
             }
         }
         catch (error) {
