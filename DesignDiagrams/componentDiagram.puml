@@ -1,0 +1,42 @@
+@startuml
+skinparam componentStyle uml2
+skinparam shadowing false
+
+package "VS Code API" {
+    [Extension Host]
+    [Workspace API]
+    [Webview API]
+    [Language Features]
+}
+
+package "WeAreFrank! VS Code Extension" {
+    [Extension Entrypoint\n(extension.ts)] as Entry
+
+    component "Snippet Module" {
+        [SnippetsTreeProvider]
+        [SnippetsService]
+        [UsersnippetsView]
+    }
+
+    component "Editor Features" {
+        [FrankRenameProvider]
+        [SessionKeyRenameProvider]
+        [FrankValidator]
+        [PipeReferenceProvider]
+    }
+
+    component "Flow Diagram Module" {
+        [FlowViewProvider]
+    }
+}
+
+Entry ..> [SnippetsTreeProvider] : registers
+Entry ..> [FrankRenameProvider] : registers
+Entry ..> [FlowViewProvider] : registers
+Entry ..> [FrankValidator] : registers
+
+[FlowViewProvider] --> [Webview API] : renders XSLT/Mermaid
+[SnippetsService] --> [Workspace API] : reads/writes configurations
+[FrankRenameProvider] --> [Language Features] : implements RenameProvider
+[UsersnippetsView] --> [Webview API] : renders UI
+@enduml

@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = require("vscode");
 const path = require("path");
-const fs = require("fs");
 const SaxonJS = require("saxon-js");
 const frankLayout = require("@frankframework/frank-config-layout");
 const jsdom_1 = require("jsdom");
@@ -30,30 +29,46 @@ class FlowViewProvider {
         if (!config) {
             return;
         }
-        // Process local SYSTEM entities to resolve aggregator configurations automatically.
-        // Note: Parsing XML with Regex is generally an anti-pattern, but necessary here 
-        // because JSDOM's DOMParser blocks external file-system entity resolution by default.
-        const entityRegex = /<!ENTITY\s+([\w.-]+)\s+SYSTEM\s+["']([^"']+)["']\s*>/gi;
-        let match;
         const dir = path.dirname(editor.document.fileName);
-        while ((match = entityRegex.exec(config)) !== null) {
+        // Process local SYSTEM entities to resolve aggregator configurations automatically.
+        // We extract all matches first using matchAll to prevent RegExp state corruption 
+        // caused by modifying the string length during iteration.
+        const entityMatches = [...config.matchAll(/<!ENTITY\s+([\w.-]+)\s+SYSTEM\s+["']([^"']+)["']\s*>/gi)];
+        for (const match of entityMatches) {
             const entityName = match[1];
             const relativePath = match[2];
             try {
                 const entityUri = vscode.Uri.file(path.join(dir, relativePath));
-                // Use VS Code's async workspace API to prevent blocking the Extension Host
                 const fileData = await vscode.workspace.fs.readFile(entityUri);
                 let entityContent = Buffer.from(fileData).toString('utf8');
-                // Strip XML declarations from injected files to maintain a valid overall XML document
+                // Strip XML declarations to prevent invalidating the master document
                 entityContent = entityContent.replace(/<\?xml[^>]*\?>/gi, '');
-                // Always use a callback function for the replacement string. 
-                // Frank! configurations contain variables like ${property}, which standard replace 
-                // might incorrectly parse as Regex capture group references if they contain $ signs.
                 config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
             }
             catch (error) {
-                console.error(`[WeAreFrank!] Entity resolution failed for ${entityName} at ${relativePath}`, error);
-                // We intentionally continue the loop; a single missing file shouldn't break the entire parsing tree immediately.
+                const errorMsg = `Unable to load entity '&${entityName};'. File '${relativePath}' is missing or unreadable.`;
+                console.error(`[WeAreFrank!] ${errorMsg}`, error);
+                // Warn the user via the UI, but do not break the flow rendering completely
+                vscode.window.showWarningMessage(`WeAreFrank! Flow: ${errorMsg}`);
+            }
+        }
+        const includeMatches = [...config.matchAll(/<Include\s+ref=["']([^"']+)["']\s*\/>/gi)];
+        for (const match of includeMatches) {
+            const fullMatch = match[0];
+            const relativePath = match[1];
+            try {
+                const includeUri = vscode.Uri.file(path.join(dir, relativePath));
+                const fileData = await vscode.workspace.fs.readFile(includeUri);
+                let includeContent = Buffer.from(fileData).toString('utf8');
+                // Strip XML declarations from injected files
+                includeContent = includeContent.replace(/<\?xml[^>]*\?>/gi, '');
+                // Replace the specific <Include ... /> tag with the fetched file content
+                config = config.replace(fullMatch, () => includeContent);
+            }
+            catch (error) {
+                const errorMsg = `Unable to resolve Include reference. File '${relativePath}' is missing or unreadable.`;
+                console.error(`[WeAreFrank!] ${errorMsg}`, error);
+                vscode.window.showWarningMessage(`Frank!Flow: ${errorMsg}`);
             }
         }
         const parser = new global.DOMParser();
@@ -70,38 +85,44 @@ class FlowViewProvider {
             sourceText: config,
             destination: "serialized"
         });
-        // Robust check using the actual DOM tree instead of brittle string splitting
-        // If the document contains adapters, we map it as an adapter flowchart.
         const isAdapter = xml.documentElement.nodeName.toLowerCase() === 'adapter' ||
             xml.getElementsByTagName("adapter").length > 0;
         const mermaidSef = convertXSLtoSEF(this.context, isAdapter ? "adapter2mermaid" : "configuration2mermaid");
         const paramsPath = path.join(this.context.extensionPath, "resources/flow/xml/params.xml");
-        // Keeping this sync for now as it loads an internal extension resource, 
-        // but refactor this to async fs.promises.readFile in your next iteration.
-        const params = fs.readFileSync(paramsPath, 'utf8');
-        const paramsXdm = await SaxonJS.getResource({
-            type: "xml",
-            text: params
-        });
-        const mermaid = SaxonJS.transform({
-            stylesheetText: mermaidSef,
-            sourceText: canoncalizedXml.principalResult,
-            destination: "serialized",
-            stylesheetParams: {
-                frankElements: paramsXdm
-            }
-        });
-        const css = this.webView.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'resources', 'css', 'flow-view-webcontent.css'));
-        const codiconCss = this.webView.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'resources', 'css', 'codicon.css'));
-        const script = this.webView.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'flow', 'flow-view-script.js'));
-        const zoomScript = this.webView.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'svg-pan-zoom', 'dist', 'svg-pan-zoom.min.js'));
         try {
-            frankLayout.initMermaid2Svg(frankLayout.getFactoryDimensions());
-            const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
-            this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
+            const paramsBuffer = await vscode.workspace.fs.readFile(vscode.Uri.file(paramsPath));
+            const paramsContent = Buffer.from(paramsBuffer).toString('utf8');
+            const paramsXdm = await SaxonJS.getResource({
+                type: "xml",
+                text: paramsContent
+            });
+            const mermaid = SaxonJS.transform({
+                stylesheetText: mermaidSef,
+                sourceText: canoncalizedXml.principalResult,
+                destination: "serialized",
+                stylesheetParams: {
+                    frankElements: paramsXdm
+                }
+            });
+            const css = this.webView.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'resources', 'css', 'flow-view-webcontent.css'));
+            const codiconCss = this.webView.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'resources', 'css', 'codicon.css'));
+            const script = this.webView.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'src', 'flow', 'flow-view-script.js'));
+            const zoomScript = this.webView.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'svg-pan-zoom', 'dist', 'svg-pan-zoom.min.js'));
+            try {
+                frankLayout.initMermaid2Svg(frankLayout.getFactoryDimensions());
+                const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
+                this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
+            }
+            catch (err) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                console.error("[WeAreFrank!] Rendering failed:", err);
+                this.webView.webview.html = getErrorWebviewContent(`Failed to generate the flow.\nPlease check your configuration syntax.\n\nDetails:\n${errorMessage}`);
+            }
         }
-        catch (err) {
-            this.webView.webview.html = getErrorWebviewContent("This file is not recognized as a Frank!Configuration");
+        catch (error) {
+            console.error("Failed to process SaxonJS resources:", error);
+            this.webView.webview.html = getErrorWebviewContent("Internal transformation error: missing resources.");
+            return;
         }
     }
 }
@@ -200,34 +221,6 @@ function getOpenedWithEmptyEditorWebviewContent() {
     <body>
         <h2>Hello!</h2>
         <p>Open a Frank!Configuration to get started :)</p>
-    </body>
-    </html>
-    `;
-}
-function getAggregatorWebviewContent() {
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Flowchart</title>
-        <style>
-            body {
-                font-family: sans-serif;
-                color: var(--vscode-list-warningForeground);
-                padding: 10px;
-            }
-            pre {
-                background: var(--vscode-editorWidget-background);
-                border-left: 4px solid var(--vscode-errorForeground);
-                padding: 5px;
-                white-space: pre-wrap;
-            }
-        </style>
-    </head>
-    <body>
-        <h2>Info</h2>
-        <p>This file combines multiple sub-configurations. Open a specific configuration to get started.</p>
     </body>
     </html>
     `;

@@ -1,0 +1,16 @@
+@startuml
+actor Developer
+participant "VS Code Editor" as Editor
+participant "FlowViewProvider" as Webview
+participant "Frank Framework\n(XSLT / Saxon)" as Saxon
+
+Developer -> Editor : Opens XML file
+Editor -> Webview : resolveWebviewView()
+Webview -> Editor : Requests document text
+Editor --> Webview : XML content
+Webview -> Saxon : Transforms XML (adapter2mermaid.xsl)
+Saxon --> Webview : Mermaid syntax
+Webview -> Webview : Generate HTML with Mermaid syntax
+Webview -> Editor : Update Webview HTML
+Editor --> Developer : Shows visual diagram
+@enduml
