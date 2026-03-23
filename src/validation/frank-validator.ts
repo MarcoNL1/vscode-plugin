@@ -1,12 +1,19 @@
 import * as vscode from 'vscode';
 import { DOMParser } from '@xmldom/xmldom';
-import { TextDecoder } from 'util';
+import { ConfigurationIndex } from './configuration-index';
+
+// Interface to prevent the sloppy 'any' casting for DOM nodes
+interface LocatableNode extends Element {
+    lineNumber: number;
+}
 
 export class FrankValidator {
     private diagnosticCollection: vscode.DiagnosticCollection;
+    private index: ConfigurationIndex;
 
-    constructor(collection: vscode.DiagnosticCollection) {
+    constructor(collection: vscode.DiagnosticCollection, index: ConfigurationIndex) {
         this.diagnosticCollection = collection;
+        this.index = index;
     }
 
     public async validate(document: vscode.TextDocument) {
@@ -26,10 +33,10 @@ export class FrankValidator {
         
         const xmlDoc = parser.parseFromString(text, 'text/xml');
 
-        // Phase 1: Pipeline-scoped Validation (Pipes and Forwards)
         this.validatePipelines(xmlDoc, document, diagnostics);
 
-        // Attach all found diagnostics to the document
+        this.validateLocalSenders(xmlDoc, document, diagnostics);
+
         this.diagnosticCollection.set(document.uri, diagnostics);
     }
 
@@ -63,22 +70,44 @@ export class FrankValidator {
                 const path = forward.getAttribute('path');
                 
                 if (path && !validTargets.has(path)) {
-                    const lineNumber = (forward as any).lineNumber - 1;
+                    const lineNumber = (forward as unknown as LocatableNode).lineNumber - 1;
                     this.addDiagnostic(
                         document, 
                         diagnostics, 
                         lineNumber, 
                         `path="${path}"`, 
-                        `Invalid Forward: The path '${path}' does not exist.`
+                        `Invalid Forward: The path '${path}' does not exist in this Pipeline.`
                     );
                 }
             }
         }
     }
 
-    /**
-     * Helper method to find the exact string on a line and create a diagnostic error.
-     */
+    private validateLocalSenders(xmlDoc: Document, document: vscode.TextDocument, diagnostics: vscode.Diagnostic[]) {
+        const senderTags = ['LocalSender', 'IbisLocalSender'];
+
+        senderTags.forEach(tagName => {
+            const senders = xmlDoc.getElementsByTagName(tagName);
+            
+            for (let i = 0; i < senders.length; i++) {
+                const sender = senders[i];
+                const targetListener = sender.getAttribute('javaListener');
+                
+                // Check against the global index instead of local document
+                if (targetListener && !this.index.hasJavaListener(targetListener)) {
+                    const lineNumber = (sender as unknown as any).lineNumber - 1; // Zorg dat je 'any' cast via je LocatableNode interface loopt
+                    this.addDiagnostic(
+                        document, 
+                        diagnostics, 
+                        lineNumber, 
+                        `javaListener="${targetListener}"`, 
+                        `Invalid target: The JavaListener '${targetListener}' is not defined in the workspace.`
+                    );
+                }
+            }
+        });
+    }
+
     private addDiagnostic(document: vscode.TextDocument, diagnostics: vscode.Diagnostic[], lineNumber: number, searchString: string, message: string) {
         if (lineNumber < 0 || lineNumber >= document.lineCount) return;
 

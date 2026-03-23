@@ -14,62 +14,75 @@ const snippets_tree_provider_1 = require("./snippets/snippets-tree-provider");
 const snippets_dnd_controller_1 = require("./snippets/snippets-dnd-controller");
 const start_tree_provider_1 = require("./start/start-tree-provider");
 const frank_validator_1 = require("./validation/frank-validator");
+const configuration_index_1 = require("./validation/configuration-index");
 const sessionKeyDefinitionProvider_1 = require("./navigation/sessionKeyDefinitionProvider");
 const frankRenameProvider_1 = require("./rename/frankRenameProvider");
 const sessionKeyRenameProvider_1 = require("./rename/sessionKeyRenameProvider");
 const frankRenameHintProvider_1 = require("./rename/frankRenameHintProvider");
 const pipeReferenceProvider_1 = require("./references/pipeReferenceProvider");
-/**
- * @param {vscode.ExtensionContext} context
-*/
 let targets = null;
 let projectNameTrimmed = "skeleton";
 let configNameTrimmed = "";
-function activate(context) {
+async function activate(context) {
+    console.log('Activating WeAreFrank! Extension...');
+    // Initialize the global workspace index for cross-file validation
+    const configurationIndex = new configuration_index_1.ConfigurationIndex();
+    await configurationIndex.buildIndex();
+    const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
+    context.subscriptions.push(diagnosticCollection);
+    // Inject the index into the validator
+    const frankValidator = new frank_validator_1.FrankValidator(diagnosticCollection, configurationIndex);
     const snippetsService = new snippets_service_1.default(context);
     const snippetsTreeProvider = new snippets_tree_provider_1.SnippetsTreeProvider(snippetsService);
     const snippetsDndController = new snippets_dnd_controller_1.SnippetsDndController(context, snippetsTreeProvider, snippetsService);
     const startService = new start_service_1.default(context);
     const startTreeProvider = new start_tree_provider_1.StartTreeProvider(context, startService);
-    const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
-    context.subscriptions.push(diagnosticCollection);
-    const frankValidator = new frank_validator_1.FrankValidator(diagnosticCollection);
-    const sessionKeyProvider = new sessionKeyDefinitionProvider_1.SessionKeyDefinitionProvider();
+    const flowViewProvider = new flow_view_provider_1.default(context);
     const documentSelector = { language: 'xml', scheme: 'file' };
+    const sessionKeyProvider = new sessionKeyDefinitionProvider_1.SessionKeyDefinitionProvider();
     const frankRenameProvider = new frankRenameProvider_1.FrankRenameProvider();
     const sessionKeyRenameProvider = new sessionKeyRenameProvider_1.SessionKeyRenameProvider();
     const frankRenameHintProvider = new frankRenameHintProvider_1.FrankRenameHintProvider();
-    frankRenameHintProvider.register(context);
     const pipeReferenceProvider = new pipeReferenceProvider_1.PipeReferenceProvider();
-    if (vscode.window.activeTextEditor) {
-        frankValidator.validate(vscode.window.activeTextEditor.document);
-    }
-    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidSaveTextDocument(doc => frankValidator.validate(doc)), vscode.workspace.onDidChangeTextDocument(e => frankValidator.validate(e.document)), vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)), vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider), vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider), vscode.languages.registerRenameProvider(documentSelector, sessionKeyRenameProvider));
+    // Register hints
+    frankRenameHintProvider.register(context);
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider), vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider), vscode.languages.registerRenameProvider(documentSelector, sessionKeyRenameProvider), vscode.window.registerWebviewViewProvider('flowView', flowViewProvider));
+    // Init start view
+    const startTreeView = vscode.window.createTreeView("startTreeView", {
+        treeDataProvider: startTreeProvider
+    });
+    // Init snippets view
+    vscode.window.createTreeView("snippetsTreeView", {
+        treeDataProvider: snippetsTreeProvider,
+        dragAndDropController: snippetsDndController
+    });
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(async (doc) => {
+        if (doc.languageId === 'xml') {
+            await configurationIndex.updateFile(doc.uri);
+            vscode.workspace.textDocuments.forEach(openDoc => {
+                if (openDoc.languageId === 'xml') {
+                    frankValidator.validate(openDoc);
+                }
+            });
+            flowViewProvider.updateWebview();
+        }
+    }), vscode.workspace.onDidDeleteFiles(event => {
+        event.files.forEach(uri => configurationIndex.removeFile(uri));
+    }), vscode.workspace.onDidChangeTextDocument(e => {
+        if (e.document.languageId === 'xml')
+            frankValidator.validate(e.document);
+    }), vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)), vscode.window.onDidChangeActiveTextEditor(() => {
+        setStartTreeViewDescription();
+        flowViewProvider.updateWebview();
+    }));
     vscode.commands.registerCommand('frank.createNewFrank', async function () {
         const items = [
-            {
-                label: 'Simple Frank'
-            },
-            {
-                label: 'Skeleton',
-                description: 'https://github.com/wearefrank/skeleton?tab=readme-ov-file#steps'
-            },
-            {
-                label: 'Project per Config',
-                description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-per-config'
-            },
-            {
-                label: 'Module per Config',
-                description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#module-per-config'
-            },
-            {
-                label: 'Monorepo',
-                description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#module-per-config-flattened-aka-monorepo'
-            },
-            {
-                label: 'Foks Monorepo',
-                description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#foks-monorepo'
-            }
+            { label: 'Simple Frank' },
+            { label: 'Skeleton', description: 'https://github.com/wearefrank/skeleton?tab=readme-ov-file#steps' },
+            { label: 'Project per Config', description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-per-config' },
+            { label: 'Module per Config', description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#module-per-config' },
+            { label: 'Monorepo', description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#module-per-config-flattened-aka-monorepo' },
+            { label: 'Foks Monorepo', description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#foks-monorepo' }
         ];
         const projectType = await vscode.window.showQuickPick(items, { placeHolder: "Pick a project" });
         if (projectType && projectType.description) {
@@ -78,29 +91,17 @@ function activate(context) {
         else if (projectType?.label === "Simple Frank") {
             const projectName = await vscode.window.showInputBox({
                 placeHolder: 'Give your project a name',
-                validateInput: (value) => {
-                    if (!value || value.trim() === '') {
-                        return 'Name cannot be empty';
-                    }
-                    return null;
-                }
+                validateInput: (value) => (!value || value.trim() === '') ? 'Name cannot be empty' : null
             });
-            if (!projectName) {
+            if (!projectName)
                 return;
-            }
             projectNameTrimmed = projectName.trim();
             const configName = await vscode.window.showInputBox({
                 placeHolder: 'Give your configuration a name',
-                validateInput: (value) => {
-                    if (!value || value.trim() === '') {
-                        return 'Name cannot be empty';
-                    }
-                    return null;
-                }
+                validateInput: (value) => (!value || value.trim() === '') ? 'Name cannot be empty' : null
             });
-            if (!configName) {
+            if (!configName)
                 return;
-            }
             configNameTrimmed = configName.trim();
             const workspaceFolders = vscode.workspace.workspaceFolders;
             if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -118,126 +119,36 @@ function activate(context) {
             vscode.env.openExternal(vscode.Uri.parse("https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-structure-and-customisation"));
         }
     });
-    //Helper function to copy simple frank project to user workspace.
-    async function copyDir(source, target) {
-        await vscode.workspace.fs.createDirectory(target);
-        const entries = await vscode.workspace.fs.readDirectory(source);
-        for (const [name, type] of entries) {
-            const src = vscode.Uri.joinPath(source, name);
-            let dest = vscode.Uri.joinPath(target, name);
-            if (name === "configName") {
-                dest = vscode.Uri.joinPath(target, configNameTrimmed);
-            }
-            if (type === vscode.FileType.Directory) {
-                await copyDir(src, dest);
-            }
-            else {
-                await vscode.workspace.fs.copy(src, dest, { overwrite: true });
-            }
-        }
-    }
     vscode.commands.registerCommand("frank.openWalkthrough", () => {
         vscode.commands.executeCommand("workbench.action.openWalkthrough", "wearefrank.wearefrank#introduction", false);
     });
-    //Helper function for starting a project.
-    async function startHandler(item, isCurrent) {
-        const editor = vscode.window.activeTextEditor;
-        if (editor && editor.document.languageId === 'xml') {
-            frankValidator.validate(editor.document);
-            const diagnostics = diagnosticCollection.get(editor.document.uri);
-            const hasErrors = diagnostics && diagnostics.some(d => d.severity === vscode.DiagnosticSeverity.Error);
-            if (hasErrors) {
-                const selection = await vscode.window.showErrorMessage("Configuration contains semantic errors (e.g., missing forwards). The application may fail to start.", "Start Anyway", "Cancel");
-                if (selection !== "Start Anyway") {
-                    return; // Abort startup
-                }
-            }
-        }
-        switch (item.method) {
-            case "ant":
-                await startService.startWithAnt(item.path, isCurrent);
-                break;
-            case "docker":
-                await startService.startWithDocker(item.path, isCurrent);
-                break;
-            case "dockerCompose":
-                await startService.startWithDockerCompose(item.path, isCurrent);
-                break;
-        }
-        startTreeProvider.rebuild();
-        startTreeProvider.refresh();
-    }
-    ;
     vscode.commands.registerCommand("frank.startCurrent", async function (item) {
-        startHandler(item, true);
+        await startHandler(item, true);
         startTreeProvider.rebuild();
         startTreeProvider.refresh();
     });
     vscode.commands.registerCommand("frank.startProject", async function (item) {
-        startHandler(item, false);
+        await startHandler(item, false);
         startTreeProvider.rebuild();
         startTreeProvider.refresh();
     });
-    //Deletes project from ran projects list in Frank!Start view.
     vscode.commands.registerCommand("frank.deleteProject", async function (item) {
         await startService.deleteRanProject(item.method, item.path);
         startTreeProvider.rebuild();
         startTreeProvider.refresh();
     });
-    //Init start view.
-    const startTreeView = vscode.window.createTreeView("startTreeView", {
-        treeDataProvider: startTreeProvider
-    });
-    setStartTreeViewDescription();
-    vscode.window.onDidChangeActiveTextEditor(() => {
-        setStartTreeViewDescription();
-    });
-    async function setStartTreeViewDescription() {
-        const project = await startService.getWorkingDirectory();
-        let projectName = "";
-        if (project != undefined) {
-            startTreeView.description = path.basename(project);
-        }
-        else {
-            startTreeView.description = "No Project Open in Editor/No Runable File Found";
-        }
-    }
     vscode.commands.registerCommand("frank.toggleUpdate", async (item) => {
-        if (!item || item.method !== "ant") {
+        if (!item || item.method !== "ant")
             return;
-        }
         await startService.toggleUpdate(item.path);
         startTreeProvider.rebuild();
         startTreeProvider.refresh();
-    });
-    //Load examples from the Frank!Framework Wiki as VS Code Snippets.
-    snippetsService.ensureSnippetsFilesExists();
-    snippetsService.loadFrankFrameworkSnippets();
-    //Init flowchart view.
-    const flowViewProvider = new flow_view_provider_1.default(context);
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider('flowView', flowViewProvider));
-    vscode.window.onDidChangeActiveTextEditor(() => {
-        flowViewProvider.updateWebview();
-    });
-    vscode.workspace.onDidSaveTextDocument((document) => {
-        if (document.languageId === "xml") {
-            flowViewProvider.updateWebview();
-        }
-    });
-    async function focusFlowView() {
-        await vscode.commands.executeCommand("workbench.view.extension.flowViewContainer");
-    }
-    focusFlowView();
-    //Init snippets tree view.
-    vscode.window.createTreeView("snippetsTreeView", {
-        treeDataProvider: snippetsTreeProvider,
-        dragAndDropController: snippetsDndController
     });
     vscode.commands.registerCommand('frank.addNewCategoryOfUserSnippets', () => {
         snippetsService.addNewCategoryOfUserSnippets(snippetsTreeProvider);
     });
     vscode.commands.registerCommand("frank.deleteAllUserSnippetByCategory", (item) => {
-        const userSnippets = snippetsService.deleteAllUserSnippetByCategory(item.label);
+        snippetsService.deleteAllUserSnippetByCategory(item.label);
         snippetsTreeProvider.rebuild();
         snippetsTreeProvider.refresh();
     });
@@ -248,7 +159,7 @@ function activate(context) {
         (0, usersnippets_view_1.showSnippetsView)(context, item.category, snippetsTreeProvider, snippetsService);
     });
     vscode.commands.registerCommand("frank.deleteUserSnippet", (item) => {
-        const userSnippets = snippetsService.deleteUserSnippet(item.category, item.index);
+        snippetsService.deleteUserSnippet(item.category, item.index);
         snippetsTreeProvider.rebuild();
         snippetsTreeProvider.refresh();
     });
@@ -267,6 +178,60 @@ function activate(context) {
         await snippetsService.addNewUserSnippet(snippetsTreeProvider);
         vscode.window.showInformationMessage("Snippet added!");
     });
+    async function copyDir(source, target) {
+        await vscode.workspace.fs.createDirectory(target);
+        const entries = await vscode.workspace.fs.readDirectory(source);
+        for (const [name, type] of entries) {
+            const src = vscode.Uri.joinPath(source, name);
+            let dest = vscode.Uri.joinPath(target, name);
+            if (name === "configName")
+                dest = vscode.Uri.joinPath(target, configNameTrimmed);
+            if (type === vscode.FileType.Directory) {
+                await copyDir(src, dest);
+            }
+            else {
+                await vscode.workspace.fs.copy(src, dest, { overwrite: true });
+            }
+        }
+    }
+    async function setStartTreeViewDescription() {
+        const project = await startService.getWorkingDirectory();
+        startTreeView.description = project ? path.basename(project) : "No Project Open in Editor/No Runable File Found";
+    }
+    async function startHandler(item, isCurrent) {
+        const editor = vscode.window.activeTextEditor;
+        if (editor && editor.document.languageId === 'xml') {
+            frankValidator.validate(editor.document);
+            const diagnostics = diagnosticCollection.get(editor.document.uri);
+            const hasErrors = diagnostics && diagnostics.some(d => d.severity === vscode.DiagnosticSeverity.Error);
+            if (hasErrors) {
+                const selection = await vscode.window.showErrorMessage("Configuration contains semantic errors (e.g., missing forwards). The application may fail to start.", "Start Anyway", "Cancel");
+                if (selection !== "Start Anyway")
+                    return;
+            }
+        }
+        switch (item.method) {
+            case "ant":
+                await startService.startWithAnt(item.path, isCurrent);
+                break;
+            case "docker":
+                await startService.startWithDocker(item.path, isCurrent);
+                break;
+            case "dockerCompose":
+                await startService.startWithDockerCompose(item.path, isCurrent);
+                break;
+        }
+    }
+    function execAsync(command, cwd) {
+        return new Promise((resolve, reject) => {
+            (0, child_process_1.exec)(command, { cwd }, (error, stdout, stderr) => {
+                if (error)
+                    reject(stderr || error);
+                else
+                    resolve(stdout);
+            });
+        });
+    }
     vscode.languages.registerDocumentLinkProvider({ language: 'xml', scheme: 'file' }, {
         provideDocumentLinks(document, token) {
             const links = [];
@@ -291,17 +256,13 @@ function activate(context) {
             return links;
         }
     });
-    function execAsync(command, cwd) {
-        return new Promise((resolve, reject) => {
-            (0, child_process_1.exec)(command, { cwd }, (error, stdout, stderr) => {
-                if (error) {
-                    reject(stderr || error);
-                }
-                else {
-                    resolve(stdout);
-                }
-            });
-        });
+    // Execute Startup Actions
+    setStartTreeViewDescription();
+    snippetsService.ensureSnippetsFilesExists();
+    snippetsService.loadFrankFrameworkSnippets();
+    vscode.commands.executeCommand("workbench.view.extension.flowViewContainer");
+    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'xml') {
+        frankValidator.validate(vscode.window.activeTextEditor.document);
     }
 }
 function deactivate() { }
