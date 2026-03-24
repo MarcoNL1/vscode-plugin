@@ -4,8 +4,9 @@ exports.FrankValidator = void 0;
 const vscode = require("vscode");
 const xmldom_1 = require("@xmldom/xmldom");
 class FrankValidator {
-    constructor(collection) {
+    constructor(collection, index) {
         this.diagnosticCollection = collection;
+        this.index = index;
     }
     async validate(document) {
         if (document.languageId !== 'xml')
@@ -21,9 +22,8 @@ class FrankValidator {
             }
         });
         const xmlDoc = parser.parseFromString(text, 'text/xml');
-        // Phase 1: Pipeline-scoped Validation (Pipes and Forwards)
         this.validatePipelines(xmlDoc, document, diagnostics);
-        // Attach all found diagnostics to the document
+        this.validateLocalSenders(xmlDoc, document, diagnostics);
         this.diagnosticCollection.set(document.uri, diagnostics);
     }
     validatePipelines(xmlDoc, document, diagnostics) {
@@ -54,14 +54,26 @@ class FrankValidator {
                 const path = forward.getAttribute('path');
                 if (path && !validTargets.has(path)) {
                     const lineNumber = forward.lineNumber - 1;
-                    this.addDiagnostic(document, diagnostics, lineNumber, `path="${path}"`, `Invalid Forward: The path '${path}' does not exist.`);
+                    this.addDiagnostic(document, diagnostics, lineNumber, `path="${path}"`, `Invalid Forward: The path '${path}' does not exist in this Pipeline.`);
                 }
             }
         }
     }
-    /**
-     * Helper method to find the exact string on a line and create a diagnostic error.
-     */
+    validateLocalSenders(xmlDoc, document, diagnostics) {
+        const senderTags = ['LocalSender', 'IbisLocalSender'];
+        senderTags.forEach(tagName => {
+            const senders = xmlDoc.getElementsByTagName(tagName);
+            for (let i = 0; i < senders.length; i++) {
+                const sender = senders[i];
+                const targetListener = sender.getAttribute('javaListener');
+                // Check against the global index instead of local document
+                if (targetListener && !this.index.hasJavaListener(targetListener)) {
+                    const lineNumber = sender.lineNumber - 1; // Zorg dat je 'any' cast via je LocatableNode interface loopt
+                    this.addDiagnostic(document, diagnostics, lineNumber, `javaListener="${targetListener}"`, `Invalid target: The JavaListener '${targetListener}' is not defined in the workspace.`);
+                }
+            }
+        });
+    }
     addDiagnostic(document, diagnostics, lineNumber, searchString, message) {
         if (lineNumber < 0 || lineNumber >= document.lineCount)
             return;
