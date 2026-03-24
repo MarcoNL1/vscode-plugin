@@ -4,53 +4,57 @@ exports.PipeReferenceProvider = void 0;
 const vscode = require("vscode");
 class PipeReferenceProvider {
     async provideReferences(document, position, context, token) {
-        // 1. Get the text of the current line
+        // 1. Validate if the cursor is on a valid Frank! attribute
         const lineText = document.lineAt(position.line).text;
-        // 2. Search for Frank! specific attributes on this line
         const attributeRegex = /(?:name|path|firstPipe|nextPipe)="([^"]*)"/g;
         let match;
         let pipeName = null;
-        // 3. Determine if the cursor is actually INSIDE the quotes of such an attribute
         while ((match = attributeRegex.exec(lineText)) !== null) {
             const matchStart = match.index;
             const matchEnd = matchStart + match[0].length;
-            // Is the cursor position within the start and end of this attribute?
             if (position.character >= matchStart && position.character <= matchEnd) {
-                pipeName = match[1]; // Capture group 1 is the string BETWEEN the quotes, including spaces.
+                pipeName = match[1];
                 break;
             }
         }
-        // If the cursor was not on a relevant attribute, abort immediately. Saves performance.
         if (!pipeName) {
             return [];
         }
-        // 4. Escape the pipe name. Suppose someone (thankfully not in your example) 
-        // uses special regex characters like parentheses in a pipe name.
         const escapedPipeName = pipeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-        if (!workspaceFolder) {
+        const locations = [];
+        // 2. Isolate the current <Pipeline> scope using document offsets
+        const fullText = document.getText();
+        const cursorOffset = document.offsetAt(position);
+        // Find the start of the pipeline before the cursor
+        const pipelineStart = fullText.lastIndexOf('<Pipeline', cursorOffset);
+        // Find the end of the pipeline after the cursor
+        let pipelineEnd = fullText.indexOf('</Pipeline>', cursorOffset);
+        // Defensive check: if no end tag is found, default to end of document
+        if (pipelineEnd !== -1) {
+            pipelineEnd += '</Pipeline>'.length;
+        }
+        else {
+            pipelineEnd = fullText.length;
+        }
+        // If we can't find a start tag, or it's malformed, exit early
+        if (pipelineStart === -1 || pipelineStart > cursorOffset) {
             return [];
         }
-        const locations = [];
-        const searchPattern = new vscode.RelativePattern(workspaceFolder, '**/*.xml');
-        const excludePattern = new vscode.RelativePattern(workspaceFolder, '{**/target/**,**/build/**,**/.git/**}');
-        const files = await vscode.workspace.findFiles(searchPattern, excludePattern, 1000, token);
-        // 5. Search with the escaped name. 
-        const regex = new RegExp(`\\b(?:name|path|firstPipe|nextPipe)="(${escapedPipeName})"`, 'g');
-        for (const file of files) {
-            if (token.isCancellationRequested)
+        // 3. Extract only the text of the current pipeline block
+        const pipelineText = fullText.substring(pipelineStart, pipelineEnd);
+        // 4. Search within the isolated block
+        const searchRegex = new RegExp(`\\b(?:name|path|firstPipe|nextPipe)="(${escapedPipeName})"`, 'g');
+        let blockMatch;
+        while ((blockMatch = searchRegex.exec(pipelineText)) !== null) {
+            if (token.isCancellationRequested) {
                 break;
-            const doc = await vscode.workspace.openTextDocument(file);
-            const text = doc.getText();
-            let fileMatch;
-            while ((fileMatch = regex.exec(text)) !== null) {
-                // Position calculation remains the same, but now it also works with spaces.
-                const matchString = fileMatch[0];
-                const valueIndex = matchString.indexOf(pipeName);
-                const startPos = doc.positionAt(fileMatch.index + valueIndex);
-                const endPos = doc.positionAt(fileMatch.index + valueIndex + pipeName.length);
-                locations.push(new vscode.Location(file, new vscode.Range(startPos, endPos)));
             }
+            const matchString = blockMatch[0];
+            const valueIndex = matchString.indexOf(pipeName);
+            const absoluteIndex = pipelineStart + blockMatch.index + valueIndex;
+            const startPos = document.positionAt(absoluteIndex);
+            const endPos = document.positionAt(absoluteIndex + pipeName.length);
+            locations.push(new vscode.Location(document.uri, new vscode.Range(startPos, endPos)));
         }
         return locations;
     }
