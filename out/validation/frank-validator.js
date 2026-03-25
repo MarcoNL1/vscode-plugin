@@ -68,7 +68,7 @@ class FrankValidator {
                 const targetListener = sender.getAttribute('javaListener');
                 // Check against the global index instead of local document
                 if (targetListener && !this.index.hasJavaListener(targetListener)) {
-                    const lineNumber = sender.lineNumber - 1; // Zorg dat je 'any' cast via je LocatableNode interface loopt
+                    const lineNumber = sender.lineNumber - 1;
                     this.addDiagnostic(document, diagnostics, lineNumber, `javaListener="${targetListener}"`, `Invalid target: The JavaListener '${targetListener}' is not defined in the workspace.`);
                 }
             }
