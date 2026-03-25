@@ -95,7 +95,7 @@ export class FrankValidator {
                 
                 // Check against the global index instead of local document
                 if (targetListener && !this.index.hasJavaListener(targetListener)) {
-                    const lineNumber = (sender as unknown as any).lineNumber - 1; // Zorg dat je 'any' cast via je LocatableNode interface loopt
+                    const lineNumber = (sender as unknown as any).lineNumber - 1;
                     this.addDiagnostic(
                         document, 
                         diagnostics, 
@@ -108,7 +108,8 @@ export class FrankValidator {
         });
     }
 
-    private addDiagnostic(document: vscode.TextDocument, diagnostics: vscode.Diagnostic[], lineNumber: number, searchString: string, message: string) {
+    private addDiagnostic(document: vscode.TextDocument, diagnostics: vscode.Diagnostic[], lineNumber: number,
+         searchString: string, message: string) {
         if (lineNumber < 0 || lineNumber >= document.lineCount) return;
 
         const lineText = document.lineAt(lineNumber).text;

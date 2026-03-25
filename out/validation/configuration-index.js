@@ -6,7 +6,7 @@ const xmldom_1 = require("@xmldom/xmldom");
 class ConfigurationIndex {
     constructor() {
         // Map of JavaListener names to their source file URI string
-        this.javaListeners = new Map();
+        this.listeners = new Map();
     }
     async buildIndex() {
         // Find all XML files, explicitly ignoring common large/irrelevant directories
@@ -22,16 +22,24 @@ class ConfigurationIndex {
             const text = new TextDecoder().decode(fileData);
             const parser = new xmldom_1.DOMParser({
                 locator: {},
-                errorHandler: { warning: () => { }, error: () => { }, fatalError: () => { } }
+                errorHandler: {
+                    warning: () => { },
+                    error: () => { },
+                    fatalError: (err) => console.error(`[DOMParser] Fatal error parsing ${uri.fsPath}:`, err)
+                }
             });
             const xmlDoc = parser.parseFromString(text, 'text/xml');
             // Purge old entries for this specific file before adding new ones
             this.removeFile(uri);
-            const listeners = xmlDoc.getElementsByTagName('JavaListener');
-            for (let i = 0; i < listeners.length; i++) {
-                const name = listeners[i].getAttribute('name');
+            // Convert HTMLCollections immediately to standard Arrays to enable proper iteration
+            const javaListeners = Array.from(xmlDoc.getElementsByTagName('JavaListener'));
+            const frankListeners = Array.from(xmlDoc.getElementsByTagName('FrankListener'));
+            // Combine into a single iterable array
+            const allListeners = [...javaListeners, ...frankListeners];
+            for (const listener of allListeners) {
+                const name = listener.getAttribute('name');
                 if (name) {
-                    this.javaListeners.set(name, uri.toString());
+                    this.listeners.set(name, uri.toString());
                 }
             }
         }
@@ -41,14 +49,14 @@ class ConfigurationIndex {
     }
     removeFile(uri) {
         const uriString = uri.toString();
-        for (const [name, storedUri] of this.javaListeners.entries()) {
+        for (const [name, storedUri] of this.listeners.entries()) {
             if (storedUri === uriString) {
-                this.javaListeners.delete(name);
+                this.listeners.delete(name);
             }
         }
     }
     hasJavaListener(name) {
-        return this.javaListeners.has(name);
+        return this.listeners.has(name);
     }
 }
 exports.ConfigurationIndex = ConfigurationIndex;

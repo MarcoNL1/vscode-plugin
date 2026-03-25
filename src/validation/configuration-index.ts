@@ -3,7 +3,7 @@ import { DOMParser } from '@xmldom/xmldom';
 
 export class ConfigurationIndex {
     // Map of JavaListener names to their source file URI string
-    private javaListeners: Map<string, string> = new Map();
+    private listeners: Map<string, string> = new Map();
 
     public async buildIndex(): Promise<void> {
         // Find all XML files, explicitly ignoring common large/irrelevant directories
@@ -22,35 +22,45 @@ export class ConfigurationIndex {
 
             const parser = new DOMParser({
                 locator: {},
-                errorHandler: { warning: () => {}, error: () => {}, fatalError: () => {} }
+                errorHandler: { 
+                    warning: () => {}, 
+                    error: () => {}, 
+                    fatalError: (err) => console.error(`[DOMParser] Fatal error parsing ${uri.fsPath}:`, err) 
+                }
             });
             const xmlDoc = parser.parseFromString(text, 'text/xml');
 
             // Purge old entries for this specific file before adding new ones
             this.removeFile(uri);
 
-            const listeners = xmlDoc.getElementsByTagName('JavaListener');
-            for (let i = 0; i < listeners.length; i++) {
-                const name = listeners[i].getAttribute('name');
+            // Convert HTMLCollections immediately to standard Arrays to enable proper iteration
+            const javaListeners = Array.from(xmlDoc.getElementsByTagName('JavaListener'));
+            const frankListeners = Array.from(xmlDoc.getElementsByTagName('FrankListener')); 
+
+            // Combine into a single iterable array
+            const allListeners: Element[] = [...javaListeners, ...frankListeners];
+            
+            for (const listener of allListeners) {
+                const name = listener.getAttribute('name');
                 if (name) {
-                    this.javaListeners.set(name, uri.toString());
+                    this.listeners.set(name, uri.toString());
                 }
             }
         } catch (error) {
             console.error(`Failed to index file: ${uri.fsPath}`, error);
         }
     }
-
+    
     public removeFile(uri: vscode.Uri): void {
         const uriString = uri.toString();
-        for (const [name, storedUri] of this.javaListeners.entries()) {
+        for (const [name, storedUri] of this.listeners.entries()) {
             if (storedUri === uriString) {
-                this.javaListeners.delete(name);
+                this.listeners.delete(name);
             }
         }
     }
 
     public hasJavaListener(name: string): boolean {
-        return this.javaListeners.has(name);
+        return this.listeners.has(name);
     }
 }
