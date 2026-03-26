@@ -25,12 +25,10 @@ let configNameTrimmed = "";
 async function activate(context) {
     console.log('Activating WeAreFrank! Extension...');
     const config = vscode.workspace.getConfiguration('frank');
-    // Initialize the global workspace index for cross-file validation
     const configurationIndex = new configuration_index_1.ConfigurationIndex();
     await configurationIndex.buildIndex();
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
     context.subscriptions.push(diagnosticCollection);
-    // Inject the index into the validator
     const frankValidator = new frank_validator_1.FrankValidator(diagnosticCollection, configurationIndex);
     const snippetsService = new snippets_service_1.default(context);
     const snippetsTreeProvider = new snippets_tree_provider_1.SnippetsTreeProvider(snippetsService);
@@ -42,6 +40,31 @@ async function activate(context) {
     const sessionKeyProvider = new sessionKeyDefinitionProvider_1.SessionKeyDefinitionProvider();
     const frankRenameHintProvider = new frankRenameHintProvider_1.FrankRenameHintProvider();
     const pipeReferenceProvider = new pipeReferenceProvider_1.PipeReferenceProvider();
+    let validationTimeout;
+    let validationCancellationTokenSource;
+    const triggerValidation = (document) => {
+        if (document.languageId !== 'xml')
+            return;
+        if (!config.get('enableValidation'))
+            return;
+        if (validationTimeout) {
+            clearTimeout(validationTimeout);
+        }
+        if (validationCancellationTokenSource) {
+            validationCancellationTokenSource.cancel();
+            validationCancellationTokenSource.dispose();
+        }
+        validationCancellationTokenSource = new vscode.CancellationTokenSource();
+        const token = validationCancellationTokenSource.token;
+        validationTimeout = setTimeout(async () => {
+            try {
+                await frankValidator.validate(document, token);
+            }
+            catch (err) {
+                console.error("FrankValidator failed:", err);
+            }
+        }, 300);
+    };
     if (config.get('enableRename')) {
         frankRenameHintProvider.register(context);
         context.subscriptions.push(vscode.languages.registerRenameProvider({ language: 'xml' }, new masterRenameProvider_1.MasterRenameProvider()));
@@ -83,9 +106,7 @@ async function activate(context) {
     }), vscode.workspace.onDidDeleteFiles(event => {
         event.files.forEach(uri => configurationIndex.removeFile(uri));
     }), vscode.workspace.onDidChangeTextDocument(e => {
-        if (e.document.languageId === 'xml' && config.get('enableValidation')) {
-            frankValidator.validate(e.document);
-        }
+        triggerValidation(e.document);
     }), vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)), vscode.window.onDidChangeActiveTextEditor(() => {
         setStartTreeViewDescription();
         if (config.get('enableFlowVisualization')) {
@@ -100,6 +121,9 @@ async function activate(context) {
             });
         }
     }));
+    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'xml') {
+        triggerValidation(vscode.window.activeTextEditor.document);
+    }
     vscode.commands.registerCommand('frank.createNewFrank', async function () {
         const items = [
             { label: 'Simple Frank' },

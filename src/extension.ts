@@ -26,14 +26,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const config = vscode.workspace.getConfiguration('frank');
 
-    // Initialize the global workspace index for cross-file validation
     const configurationIndex = new ConfigurationIndex();
     await configurationIndex.buildIndex();
 
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
     context.subscriptions.push(diagnosticCollection);
     
-    // Inject the index into the validator
     const frankValidator = new FrankValidator(diagnosticCollection, configurationIndex);
     
     const snippetsService = new SnippetsService(context);
@@ -50,6 +48,34 @@ export async function activate(context: vscode.ExtensionContext) {
     const sessionKeyProvider = new SessionKeyDefinitionProvider();
     const frankRenameHintProvider = new FrankRenameHintProvider();
     const pipeReferenceProvider = new PipeReferenceProvider();
+
+    let validationTimeout: NodeJS.Timeout | undefined;
+    let validationCancellationTokenSource: vscode.CancellationTokenSource | undefined;
+
+    const triggerValidation = (document: vscode.TextDocument) => {
+        if (document.languageId !== 'xml') return;
+        if (!config.get('enableValidation')) return;
+
+        if (validationTimeout) {
+            clearTimeout(validationTimeout);
+        }
+
+        if (validationCancellationTokenSource) {
+            validationCancellationTokenSource.cancel();
+            validationCancellationTokenSource.dispose();
+        }
+
+        validationCancellationTokenSource = new vscode.CancellationTokenSource();
+        const token = validationCancellationTokenSource.token;
+
+        validationTimeout = setTimeout(async () => {
+            try {
+                await frankValidator.validate(document, token);
+            } catch (err) {
+                console.error("FrankValidator failed:", err);
+            }
+        }, 300);
+    };
 
     if (config.get('enableRename')) {
         frankRenameHintProvider.register(context);
@@ -113,9 +139,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document.languageId === 'xml' && config.get('enableValidation')) {
-                frankValidator.validate(e.document);
-            }
+            triggerValidation(e.document);
         }),
 
         vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)),
@@ -140,6 +164,10 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         })
     );
+
+    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'xml') {
+        triggerValidation(vscode.window.activeTextEditor.document);
+    }
 
     vscode.commands.registerCommand('frank.createNewFrank', async function () {
         const items = [
