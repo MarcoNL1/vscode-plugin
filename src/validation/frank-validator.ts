@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { DOMParser } from '@xmldom/xmldom';
 import { ConfigurationIndex } from './configuration-index';
+import { ExpressionValidator } from './expressionValidator';
 
-// Interface to prevent the sloppy 'any' casting for DOM nodes
 interface LocatableNode extends Element {
     lineNumber: number;
 }
@@ -10,17 +10,23 @@ interface LocatableNode extends Element {
 export class FrankValidator {
     private diagnosticCollection: vscode.DiagnosticCollection;
     private index: ConfigurationIndex;
+    private expressionValidator: ExpressionValidator;
 
     constructor(collection: vscode.DiagnosticCollection, index: ConfigurationIndex) {
         this.diagnosticCollection = collection;
         this.index = index;
+        this.expressionValidator = new ExpressionValidator();
     }
 
-    public async validate(document: vscode.TextDocument) {
+    public async validate(document: vscode.TextDocument, token?: vscode.CancellationToken) {
         if (document.languageId !== 'xml') return;
 
         const diagnostics: vscode.Diagnostic[] = [];
         const text = document.getText();
+
+        // 1. Yield to the event loop before running the heavy DOM parser
+        await new Promise(resolve => setTimeout(resolve, 0));
+        if (token?.isCancellationRequested) return;
 
         const parser = new DOMParser({
             locator: {},
@@ -34,10 +40,49 @@ export class FrankValidator {
         const xmlDoc = parser.parseFromString(text, 'text/xml');
 
         this.validatePipelines(xmlDoc, document, diagnostics);
-
         this.validateLocalSenders(xmlDoc, document, diagnostics);
+        
+        // 2. Await the asynchronous expression validation
+        await this.validateExpressions(xmlDoc, document, diagnostics, token);
+
+        // 3. Final check before committing diagnostics to the UI
+        if (token?.isCancellationRequested) return;
 
         this.diagnosticCollection.set(document.uri, diagnostics);
+    }
+
+    private async validateExpressions(xmlDoc: Document, document: vscode.TextDocument, diagnostics: vscode.Diagnostic[], token?: vscode.CancellationToken) {
+        const elements = xmlDoc.getElementsByTagName('*');
+        const attributesToCheck = ['jsonPath', 'xpathExpression'];
+
+        for (let i = 0; i < elements.length; i++) {
+            const el = elements[i];
+            
+            for (const attrName of attributesToCheck) {
+                const attrValue = el.getAttribute(attrName);
+                if (attrValue) {
+                    if (token?.isCancellationRequested) return;
+
+                    const lineNumber = (el as unknown as LocatableNode).lineNumber - 1;
+                    if (lineNumber < 0 || lineNumber >= document.lineCount) continue;
+
+                    const lineText = document.lineAt(lineNumber).text;
+                    const startIndex = lineText.indexOf(attrValue);
+                    
+                    const startCharacter = startIndex !== -1 ? startIndex : 0;
+                    const endCharacter = startIndex !== -1 ? startIndex + attrValue.length : lineText.length;
+                    
+                    const range = new vscode.Range(lineNumber, startCharacter, lineNumber, endCharacter);
+                    
+                    const actualToken = token ?? new vscode.CancellationTokenSource().token;
+                    
+                    const diagnostic = await this.expressionValidator.checkExpression(attrName, attrValue, range, actualToken);
+                    if (diagnostic) {
+                        diagnostics.push(diagnostic);
+                    }
+                }
+            }
+        }
     }
 
     private validatePipelines(xmlDoc: Document, document: vscode.TextDocument, diagnostics: vscode.Diagnostic[]) {
@@ -47,7 +92,6 @@ export class FrankValidator {
             const pipeline = pipelines[i];
             const validTargets = new Set<string>();
 
-            // 1. Collect valid targets (Pipes and Exits)
             const allElements = pipeline.getElementsByTagName('*');
             for (let j = 0; j < allElements.length; j++) {
                 const tagName = allElements[j].tagName;
@@ -63,7 +107,6 @@ export class FrankValidator {
                 if (name) validTargets.add(name);
             }
 
-            // 2. Validate Forwards against the targets
             const forwards = pipeline.getElementsByTagName('Forward');
             for (let k = 0; k < forwards.length; k++) {
                 const forward = forwards[k];
@@ -93,9 +136,8 @@ export class FrankValidator {
                 const sender = senders[i];
                 const targetListener = sender.getAttribute('javaListener');
                 
-                // Check against the global index instead of local document
                 if (targetListener && !this.index.hasJavaListener(targetListener)) {
-                    const lineNumber = (sender as unknown as any).lineNumber - 1;
+                    const lineNumber = (sender as unknown as LocatableNode).lineNumber - 1;
                     this.addDiagnostic(
                         document, 
                         diagnostics, 

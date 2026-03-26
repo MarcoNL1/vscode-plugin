@@ -24,12 +24,10 @@ let projectNameTrimmed = "skeleton";
 let configNameTrimmed = "";
 async function activate(context) {
     console.log('Activating WeAreFrank! Extension...');
-    // Initialize the global workspace index for cross-file validation
     const configurationIndex = new configuration_index_1.ConfigurationIndex();
     await configurationIndex.buildIndex();
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
     context.subscriptions.push(diagnosticCollection);
-    // Inject the index into the validator
     const frankValidator = new frank_validator_1.FrankValidator(diagnosticCollection, configurationIndex);
     const snippetsService = new snippets_service_1.default(context);
     const snippetsTreeProvider = new snippets_tree_provider_1.SnippetsTreeProvider(snippetsService);
@@ -41,6 +39,33 @@ async function activate(context) {
     const sessionKeyProvider = new sessionKeyDefinitionProvider_1.SessionKeyDefinitionProvider();
     const frankRenameHintProvider = new frankRenameHintProvider_1.FrankRenameHintProvider();
     const pipeReferenceProvider = new pipeReferenceProvider_1.PipeReferenceProvider();
+    let validationTimeout;
+    let validationCancellationTokenSource;
+    const triggerValidation = (document) => {
+        if (document.languageId !== 'xml')
+            return;
+        // Clear existing timeout
+        if (validationTimeout) {
+            clearTimeout(validationTimeout);
+        }
+        // Cancel previous validation execution
+        if (validationCancellationTokenSource) {
+            validationCancellationTokenSource.cancel();
+            validationCancellationTokenSource.dispose();
+        }
+        // Create a new cancellation token for this typing pass
+        validationCancellationTokenSource = new vscode.CancellationTokenSource();
+        const token = validationCancellationTokenSource.token;
+        // Debounce for 300ms
+        validationTimeout = setTimeout(async () => {
+            try {
+                await frankValidator.validate(document, token);
+            }
+            catch (err) {
+                console.error("FrankValidator failed:", err);
+            }
+        }, 300);
+    };
     // Register hints
     frankRenameHintProvider.register(context);
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider), vscode.window.registerWebviewViewProvider('flowView', flowViewProvider), vscode.languages.registerRenameProvider({ language: 'xml' }, new masterRenameProvider_1.MasterRenameProvider()));
@@ -57,21 +82,21 @@ async function activate(context) {
         if (doc.languageId === 'xml') {
             await configurationIndex.updateFile(doc.uri);
             vscode.workspace.textDocuments.forEach(openDoc => {
-                if (openDoc.languageId === 'xml') {
-                    frankValidator.validate(openDoc);
-                }
+                triggerValidation(openDoc);
             });
             flowViewProvider.updateWebview();
         }
     }), vscode.workspace.onDidDeleteFiles(event => {
         event.files.forEach(uri => configurationIndex.removeFile(uri));
     }), vscode.workspace.onDidChangeTextDocument(e => {
-        if (e.document.languageId === 'xml')
-            frankValidator.validate(e.document);
+        triggerValidation(e.document);
     }), vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)), vscode.window.onDidChangeActiveTextEditor(() => {
         setStartTreeViewDescription();
         flowViewProvider.updateWebview();
     }));
+    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'xml') {
+        triggerValidation(vscode.window.activeTextEditor.document);
+    }
     vscode.commands.registerCommand('frank.createNewFrank', async function () {
         const items = [
             { label: 'Simple Frank' },
