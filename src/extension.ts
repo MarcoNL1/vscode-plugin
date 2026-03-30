@@ -13,8 +13,7 @@ import { StartTreeProvider } from "./start/start-tree-provider";
 import { FrankValidator } from './validation/frank-validator';
 import { ConfigurationIndex } from './validation/configuration-index';
 import { SessionKeyDefinitionProvider } from './navigation/sessionKeyDefinitionProvider';
-import { FrankRenameProvider } from './rename/frankRenameProvider';
-import { SessionKeyRenameProvider } from './rename/sessionKeyRenameProvider';
+import { MasterRenameProvider } from './rename/masterRenameProvider';
 import { FrankRenameHintProvider } from './rename/frankRenameHintProvider';
 import { PipeReferenceProvider } from './references/pipeReferenceProvider';
 
@@ -47,8 +46,6 @@ export async function activate(context: vscode.ExtensionContext) {
     const documentSelector: vscode.DocumentSelector = { language: 'xml', scheme: 'file' };
     
     const sessionKeyProvider = new SessionKeyDefinitionProvider();
-    const frankRenameProvider = new FrankRenameProvider();
-    const sessionKeyRenameProvider = new SessionKeyRenameProvider();
     const frankRenameHintProvider = new FrankRenameHintProvider();
     const pipeReferenceProvider = new PipeReferenceProvider();
 
@@ -57,10 +54,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider),
-        vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider),
         vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider),
-        vscode.languages.registerRenameProvider(documentSelector, sessionKeyRenameProvider),
-        vscode.window.registerWebviewViewProvider('flowView', flowViewProvider)
+        vscode.window.registerWebviewViewProvider('flowView', flowViewProvider),
+        vscode.languages.registerRenameProvider({ language: 'xml' }, new MasterRenameProvider())
     );
 
     // Init start view

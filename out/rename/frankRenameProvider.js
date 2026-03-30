@@ -28,12 +28,8 @@ class FrankRenameProvider {
                 const el = elements[j];
                 const nameAttr = el.getAttribute('name');
                 const pathAttr = el.getAttribute('path');
-                // We check if this node in the current pipeline has the name or path that we are renaming
                 if (nameAttr === oldName || pathAttr === oldName) {
                     const startLine = el.lineNumber - 1;
-                    // Since XML tags can be spread across multiple lines (like in your XmlSwitchPipe),
-                    // we check if the cursor is on or just after the opening tag.
-                    // A margin of 20 lines is more than enough to capture large multi-line definitions.
                     if (position.line >= startLine && position.line <= startLine + 20) {
                         targetPipeline = pipeline;
                         break;
@@ -41,7 +37,7 @@ class FrankRenameProvider {
                 }
             }
             if (targetPipeline)
-                break; // Once we have the correct pipeline, we stop searching
+                break;
         }
         if (!targetPipeline) {
             vscode.window.showInformationMessage("Rename action canceled: Cursor is not within a recognizable <Pipeline> scope.");
@@ -116,8 +112,6 @@ class FrankRenameProvider {
                 };
             }
         }
-        // If the cursor is on the line but not strictly inside the attribute value
-        throw new Error("Place the cursor explicitly inside the quotes of the name or path attribute.");
     }
 }
 exports.FrankRenameProvider = FrankRenameProvider;
