@@ -6,37 +6,38 @@ export class SessionKeyRenameProvider implements vscode.RenameProvider {
         document: vscode.TextDocument,
         position: vscode.Position,
         token: vscode.CancellationToken
-    ): Promise<vscode.Range | { range: vscode.Range; placeholder: string; }> {
+    ): Promise<vscode.Range | { range: vscode.Range; placeholder: string; } | undefined> {
+    
+    const line = document.lineAt(position.line).text;
+    
+    const sessionKeyRegex = /\b(?:\w*sessionKey)\s*=\s*(["'])([^"']+)\1/gi;
+    let match;
+    
+    while ((match = sessionKeyRegex.exec(line)) !== null) {
+        const quoteType = match[1];
+        const attributeValue = match[2];
         
-        // Extract the exact word under the cursor, ignoring quotes
-        const wordRange = document.getWordRangeAtPosition(position, /[^"']+/);
-        if (!wordRange) {
-            throw new Error("Invalid position for renaming a session key.");
-        }
-
-        const line = document.lineAt(position.line).text;
-        const clickedWord = document.getText(wordRange);
-
-        // Strictly validate if the cursor is positioned within a session key attribute value.
-        // Matches attributes like 'sessionKey', 'storeResultInSessionKey', 'getInputFromSessionKey', etc.
-        const sessionKeyRegex = new RegExp(`\\b(\\w*sessionKey)\\s*=\\s*["']${clickedWord}["']`, 'i');
+        const valueStartIndex = match.index + match[0].indexOf(quoteType) + 1;
+        const valueEndIndex = valueStartIndex + attributeValue.length;
         
-        if (!sessionKeyRegex.test(line)) {
-            throw new Error("Rename action canceled: Cursor is not positioned on a valid session key attribute.");
+        if (position.character >= valueStartIndex && position.character <= valueEndIndex) {
+            const startPos = new vscode.Position(position.line, valueStartIndex);
+            const endPos = new vscode.Position(position.line, valueEndIndex);
+            
+            return {
+                range: new vscode.Range(startPos, endPos),
+                placeholder: attributeValue
+            };
         }
-
-        return {
-            range: wordRange,
-            placeholder: clickedWord
-        };
     }
+}
 
     async provideRenameEdits(
         document: vscode.TextDocument,
         position: vscode.Position,
         newName: string,
         token: vscode.CancellationToken
-    ): Promise<vscode.WorkspaceEdit | null> {
+    ): Promise<vscode.WorkspaceEdit | null | undefined> {
         
         const wordRange = document.getWordRangeAtPosition(position, /[^"']+/);
         if (!wordRange) return null;
@@ -44,14 +45,11 @@ export class SessionKeyRenameProvider implements vscode.RenameProvider {
         const oldName = document.getText(wordRange);
         const edit = new vscode.WorkspaceEdit();
 
-        // Retrieve all XML files in the workspace, explicitly ignoring build output and dependencies to maintain performance.
         const xmlFiles = await vscode.workspace.findFiles('**/*.xml', '{**/node_modules/**,**/target/**}');
 
-        // Regex captures:
-        // Group 1: The attribute name (e.g., storeResultInSessionKey)
-        // Group 2: The opening quote (" or ')
-        // Group 3: The actual session key value to replace
-        const renameRegex = new RegExp(`\\b(\\w*sessionKey)\\s*=\\s*(["'])(${oldName})\\2`, 'gi');
+        // Group 1: The quote (' or ")
+        // Group 2: The exact session key value (oldName)
+        const renameRegex = new RegExp(`\\b(?:\\w*sessionKey)\\s*=\\s*(["'])(${oldName})\\1`, 'gi');
 
         for (const fileUri of xmlFiles) {
             if (token.isCancellationRequested) {
@@ -59,11 +57,9 @@ export class SessionKeyRenameProvider implements vscode.RenameProvider {
             }
 
             try {
-                // Buffer reading is significantly faster than fully opening the document in the IDE
                 const fileData = await vscode.workspace.fs.readFile(fileUri);
                 const fileText = Buffer.from(fileData).toString('utf8');
 
-                // Quick bail-out if the old session key name doesn't even exist in this file
                 if (!fileText.includes(oldName)) {
                     continue;
                 }
@@ -74,23 +70,18 @@ export class SessionKeyRenameProvider implements vscode.RenameProvider {
 
                 while ((match = renameRegex.exec(fileText)) !== null) {
                     
-                    // Lazy load the TextDocument only if a match is confirmed, saving memory overhead
                     if (!doc) {
                         doc = await vscode.workspace.openTextDocument(fileUri);
                     }
 
-                    const attrNameLength = match[1].length;
+                    const quoteType = match[1];
                     
-                    // Calculate exact offsets to only replace the value, keeping the attribute name and quotes intact
-                    const equalsAndQuoteLength = match[0].indexOf(match[2], attrNameLength) + 1 - attrNameLength; 
-                    
-                    const valueStartOffset = match.index + attrNameLength + equalsAndQuoteLength;
+                    const valueStartOffset = match.index + match[0].indexOf(quoteType) + 1;
                     const valueEndOffset = valueStartOffset + oldName.length;
 
                     const startPos = doc.positionAt(valueStartOffset);
                     const endPos = doc.positionAt(valueEndOffset);
 
-                    // Add the text replacement instruction to the WorkspaceEdit batch
                     edit.replace(fileUri, new vscode.Range(startPos, endPos), newName);
                 }
             } catch (error) {
