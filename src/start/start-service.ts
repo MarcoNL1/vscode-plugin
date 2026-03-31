@@ -5,7 +5,7 @@ import * as path from 'path';
 import { ProjectTreeItem } from "./start-tree-provider";
 
 class StartService {
-    context: any;
+    context: vscode.ExtensionContext;
     constructor(context: any) {
         this.context = context;
     }
@@ -374,7 +374,7 @@ class StartService {
         await this.saveRanProject("docker", workingDir);
     }
 
-    async startWithDockerCompose(workingDir: any, isCurrent: any) {
+    async startWithDockerCompose(workingDir: string | undefined, isCurrent: boolean) {
         if (isCurrent) {
             workingDir = await this.getWorkingDirectory("compose.frank.yaml");
         }
@@ -383,11 +383,30 @@ class StartService {
             return;
         }
 
-        const term = vscode.window.createTerminal('cmd');
+        const dockerfilePath = path.join(workingDir, "Dockerfile");
+        
+        if (!fs.existsSync(dockerfilePath)) {
+            const choice = await vscode.window.showInformationMessage(
+                `A Dockerfile is required to build the Frank! container. Create it now?`,
+                'Yes',
+                'Cancel'
+            );
+
+            if (choice === 'Yes') {
+                await this.createFile(workingDir, "Dockerfile");
+            } else {
+                vscode.window.showErrorMessage("Cannot start Docker Compose without a Dockerfile.");
+                return;
+            }
+        }
+
+        const term = vscode.window.createTerminal('Frank! Docker Compose');
         term.show();
 
         term.sendText(`cd "${workingDir}"`);
-        term.sendText(`docker compose -f ${this.getComposeFile(workingDir)} --build`);
+        
+        const composeFileName = this.getComposeFile(workingDir) || "compose.frank.yaml";
+        term.sendText(`docker compose -f "${composeFileName}" up --build`);
 
         await this.saveRanProject("dockerCompose", workingDir);
     }

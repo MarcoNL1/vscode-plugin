@@ -291,10 +291,22 @@ class StartService {
         if (!workingDir) {
             return;
         }
-        const term = vscode.window.createTerminal('cmd');
+        const dockerfilePath = path.join(workingDir, "Dockerfile");
+        if (!fs.existsSync(dockerfilePath)) {
+            const choice = await vscode.window.showInformationMessage(`A Dockerfile is required to build the Frank! container. Create it now?`, 'Yes', 'Cancel');
+            if (choice === 'Yes') {
+                await this.createFile(workingDir, "Dockerfile");
+            }
+            else {
+                vscode.window.showErrorMessage("Cannot start Docker Compose without a Dockerfile.");
+                return;
+            }
+        }
+        const term = vscode.window.createTerminal('Frank! Docker Compose');
         term.show();
         term.sendText(`cd "${workingDir}"`);
-        term.sendText(`docker compose -f ${this.getComposeFile(workingDir)} --build`);
+        const composeFileName = this.getComposeFile(workingDir) || "compose.frank.yaml";
+        term.sendText(`docker compose -f "${composeFileName}" up --build`);
         await this.saveRanProject("dockerCompose", workingDir);
     }
 }
