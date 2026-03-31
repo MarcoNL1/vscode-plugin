@@ -26,9 +26,9 @@ class StartService {
         const newFilePath = path.join(workspaceRoot, file);
         const defaultFilePath = path.join(this.context.extensionPath, 'resources', file);
         let newFile = fs.readFileSync(defaultFilePath, 'utf8');
-        if (file === "compose.frank.yaml") {
+        if (file === "compose.frank.yml") {
             if (workspaceRoot.toLowerCase().endsWith('\\frank-runner')) {
-                vscode.window.showErrorMessage("Please add the compose.frank.yaml manually.");
+                vscode.window.showErrorMessage("Please add the compose.frank.yml manually.");
                 return false;
             }
             const skeletonrcJSONPath = path.join(workspaceRoot, "skeletonrc.json");
@@ -58,7 +58,7 @@ class StartService {
                     return currentDir;
                 }
             }
-            else if (file != "compose.frank.yaml") {
+            else if (file != "compose.frank.yml") {
                 if (fs.existsSync(path.join(currentDir, file))) {
                     return currentDir;
                 }
@@ -286,7 +286,7 @@ class StartService {
     }
     async startWithDockerCompose(workingDir, isCurrent) {
         if (isCurrent) {
-            workingDir = await this.getWorkingDirectory("compose.frank.yaml");
+            workingDir = await this.getWorkingDirectory("compose.frank.yml");
         }
         if (!workingDir) {
             return;
@@ -305,7 +305,7 @@ class StartService {
         const term = vscode.window.createTerminal('Frank! Docker Compose');
         term.show();
         term.sendText(`cd "${workingDir}"`);
-        const composeFileName = this.getComposeFile(workingDir) || "compose.frank.yaml";
+        const composeFileName = this.getComposeFile(workingDir) || "compose.frank.yml";
         term.sendText(`docker compose -f "${composeFileName}" up --build`);
         await this.saveRanProject("dockerCompose", workingDir);
     }

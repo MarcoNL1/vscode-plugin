@@ -1,0 +1,44 @@
+services:
+  frank:
+    build:
+      context: .
+      pull: true
+    image: ${IMAGE_ID:-${IMAGE_TAG:-ghcr.io/wearefrank/placeholder}}
+    environment:
+      dtap.stage: LOC
+      configurations.directory.classLoaderType: ScanningDirectoryClassLoader
+    volumes:
+      - h2-data:/opt/frank/h2:rw
+      - logs:/usr/local/tomcat/logs:rw
+    develop:
+      watch:
+        - action: sync
+          path: ./src/main/configurations
+          target: /opt/frank/configurations
+        - action: sync
+          path: ./src/main/resources
+          target: /opt/frank/resources
+        - action: sync
+          path: ./src/test/testtool
+          target: /opt/frank/testtool
+        - action: sync+restart
+          path: ./src/main/secrets
+          target: /opt/frank/secrets
+    ports:
+      - "${PORT:-8080}:8080"
+    restart: unless-stopped
+
+  frank-flow:
+    image: frankframework/frank-flow:latest
+    environment:
+      configurations.directory: /opt/frank/configurations
+    volumes:
+      - ./src/main/configurations:/opt/frank/configurations:rw
+    ports:
+      - "8090:8080"
+    depends_on:
+      - frank
+
+volumes:
+  logs:
+  h2-data:
