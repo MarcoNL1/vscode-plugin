@@ -35,9 +35,9 @@ class StartService {
         const defaultFilePath = path.join(this.context.extensionPath, 'resources', file)
         let newFile = fs.readFileSync(defaultFilePath, 'utf8');
 
-        if (file === "compose.frank.yml") {
+        if (file === "docker-compose.yml") {
             if (workspaceRoot.toLowerCase().endsWith('\\frank-runner')) {
-                vscode.window.showErrorMessage("Please add the compose.frank.yml manually.");
+                vscode.window.showErrorMessage("Please add the docker-compose.yml manually.");
                 return false;
             }
 
@@ -75,7 +75,7 @@ class StartService {
                 if (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir) != null) {
                     return currentDir;
                 }
-            } else if (file != "compose.frank.yml") {
+            } else if (file != "docker-compose.yml") {
                 if (fs.existsSync(path.join(currentDir, file))) {
                     return currentDir;
                 }
@@ -376,28 +376,11 @@ class StartService {
 
     async startWithDockerCompose(workingDir: string | undefined, isCurrent: boolean) {
         if (isCurrent) {
-            workingDir = await this.getWorkingDirectory("compose.frank.yml");
+            workingDir = await this.getWorkingDirectory("docker-compose.yml");
         }
 
         if (!workingDir) {
             return;
-        }
-
-        const dockerfilePath = path.join(workingDir, "Dockerfile");
-        
-        if (!fs.existsSync(dockerfilePath)) {
-            const choice = await vscode.window.showInformationMessage(
-                `A Dockerfile is required to build the Frank! container. Create it now?`,
-                'Yes',
-                'Cancel'
-            );
-
-            if (choice === 'Yes') {
-                await this.createFile(workingDir, "Dockerfile");
-            } else {
-                vscode.window.showErrorMessage("Cannot start Docker Compose without a Dockerfile.");
-                return;
-            }
         }
 
         const term = vscode.window.createTerminal('Frank! Docker Compose');
@@ -405,8 +388,8 @@ class StartService {
 
         term.sendText(`cd "${workingDir}"`);
         
-        const composeFileName = this.getComposeFile(workingDir) || "compose.frank.yml";
-        term.sendText(`docker compose -f "${composeFileName}" up --build`);
+        const composeFileName = this.getComposeFile(workingDir) || "docker-compose.yml";
+        term.sendText(`docker-compose up`);
 
         await this.saveRanProject("dockerCompose", workingDir);
     }
