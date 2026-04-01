@@ -12,7 +12,6 @@ class StartService {
         const ranProjectsPath = path.join(storageDir, 'ranProjects.json');
         const ranProjectsBody = {
             "ant": [],
-            "docker": [],
             "dockerCompose": []
         };
         if (!fs.existsSync(storageDir)) {
@@ -54,7 +53,7 @@ class StartService {
         let lastDir = currentDir;
         while (true) {
             if (!file) {
-                if (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir) != null) {
+                if (fs.existsSync(path.join(currentDir, "build.xml")) || this.getComposeFile(currentDir) != null) {
                     return currentDir;
                 }
             }
@@ -267,22 +266,6 @@ class StartService {
             term.sendText(`../frank-runner/ant.bat`);
         }
         await this.saveRanProject("ant", workingDir);
-    }
-    async startWithDocker(workingDir, isCurrent) {
-        if (isCurrent) {
-            workingDir = await this.getWorkingDirectory("Dockerfile");
-        }
-        if (!workingDir) {
-            return;
-        }
-        const projectName = path.basename(workingDir).toLocaleLowerCase();
-        var term = vscode.window.createTerminal('cmd');
-        term.show();
-        term.sendText(`cd "${workingDir}"`);
-        term.sendText(`docker build -t ${projectName} .`);
-        term.sendText(`docker rm ${projectName}-container`);
-        term.sendText(`docker run --name ${projectName}-container ${projectName}`);
-        await this.saveRanProject("docker", workingDir);
     }
     async startWithDockerCompose(workingDir, isCurrent) {
         if (isCurrent) {

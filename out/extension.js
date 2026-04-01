@@ -211,9 +211,6 @@ async function activate(context) {
             case "ant":
                 await startService.startWithAnt(item.path, isCurrent);
                 break;
-            case "docker":
-                await startService.startWithDocker(item.path, isCurrent);
-                break;
             case "dockerCompose":
                 await startService.startWithDockerCompose(item.path, isCurrent);
                 break;

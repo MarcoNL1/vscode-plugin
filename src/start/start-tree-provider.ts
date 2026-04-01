@@ -37,7 +37,6 @@ class StartTreeProvider {
         let ranProjectJSON = JSON.parse(ranProjects);
 
         let existingProjectsAnt = [];
-        let existingProjectsDocker = [];
         let existingProjectsDockerCompose = [];
 
         const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
@@ -48,12 +47,6 @@ class StartTreeProvider {
             }
         }
 
-        for (const project of ranProjectJSON.docker ?? []) {
-            if (this.isInWorkspace(project.path, workspaceFolders)) {
-                existingProjectsDocker.push(project);
-            }
-        }
-
         for (const project of ranProjectJSON.dockerCompose ?? []) {
             if (this.isInWorkspace(project.path, workspaceFolders)) {
                 existingProjectsDockerCompose.push(project);
@@ -61,10 +54,9 @@ class StartTreeProvider {
         }
 
         const antTreeItem = new StartTreeItem(`Start with Ant`, existingProjectsAnt, "ant", vscode.TreeItemCollapsibleState.Expanded, this.startService);
-        const dockerTreeItem = new StartTreeItem("Start with Docker", existingProjectsDocker, "docker", vscode.TreeItemCollapsibleState.Expanded, this.startService);
         const dockerComposeTreeItem = new StartTreeItem("Start with Docker Compose", existingProjectsDockerCompose, "dockerCompose", vscode.TreeItemCollapsibleState.Expanded, this.startService);
 
-        this.startTreeItems = [antTreeItem, dockerTreeItem, dockerComposeTreeItem];
+        this.startTreeItems = [antTreeItem, dockerComposeTreeItem];
     }
 
     getTreeItem(snippet: any) {

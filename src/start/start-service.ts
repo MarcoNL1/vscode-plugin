@@ -16,7 +16,6 @@ class StartService {
 
         const ranProjectsBody = {
             "ant": [],
-            "docker": [],
             "dockerCompose": []
         };
 
@@ -72,7 +71,7 @@ class StartService {
 
         while (true) {
             if (!file) {
-                if (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir) != null) {
+                if (fs.existsSync(path.join(currentDir, "build.xml")) || this.getComposeFile(currentDir) != null) {
                     return currentDir;
                 }
             } else if (file != "docker-compose.yml") {
@@ -350,28 +349,6 @@ class StartService {
         }
 
         await this.saveRanProject("ant", workingDir);
-    }
-
-    async startWithDocker(workingDir: any, isCurrent: any) {
-        if (isCurrent) {
-            workingDir = await this.getWorkingDirectory("Dockerfile");
-        }
-
-        if (!workingDir) {
-            return;
-        }
-
-        const projectName = path.basename(workingDir).toLocaleLowerCase();
-
-        var term = vscode.window.createTerminal('cmd');
-        term.show();
-    
-        term.sendText(`cd "${workingDir}"`);
-        term.sendText(`docker build -t ${projectName} .`);
-        term.sendText(`docker rm ${projectName}-container`);
-        term.sendText(`docker run --name ${projectName}-container ${projectName}`);
-        
-        await this.saveRanProject("docker", workingDir);
     }
 
     async startWithDockerCompose(workingDir: string | undefined, isCurrent: boolean) {
