@@ -7,7 +7,7 @@ services:
       - source: resources_yml
         target: /opt/frank/resources/resources.yml
     volumes: &frank-volumes
-      - ./configurations/:/opt/frank/configurations
+      - ../:/opt/frank/configurations
     environment:
       instance.name: FrankFlowApp
   frank-flow:

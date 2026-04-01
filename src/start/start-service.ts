@@ -16,7 +16,6 @@ class StartService {
 
         const ranProjectsBody = {
             "ant": [],
-            "docker": [],
             "dockerCompose": []
         };
 
@@ -29,92 +28,79 @@ class StartService {
         }
     }
 
-    async createFile(workspaceRoot: any, file: any) {
-        const newFilePath = path.join(workspaceRoot, file)
+    async promptForConfigurationFolder(): Promise<string | undefined> {
+        // Find all Configuration.xml files in the workspace
+        const configFiles = await vscode.workspace.findFiles('**/Configuration.xml', '**/node_modules/**');
+        
+        if (configFiles.length === 0) {
+            vscode.window.showErrorMessage("No Frank! configurations found in the workspace.");
+            return undefined;
+        }
 
-        const defaultFilePath = path.join(this.context.extensionPath, 'resources', file)
-        let newFile = fs.readFileSync(defaultFilePath, 'utf8');
+        const quickPickItems: vscode.QuickPickItem[] = configFiles.map(uri => {
+            const dirPath = path.dirname(uri.fsPath);
+            return {
+                label: path.basename(dirPath),
+                description: vscode.workspace.asRelativePath(dirPath),
+                detail: dirPath
+            };
+        });
+
+        const selected = await vscode.window.showQuickPick(quickPickItems, {
+            placeHolder: "Select the configuration to run with Docker Compose"
+        });
+
+        return selected ? (selected as any).detail : undefined;
+    }
+
+    async createFile(targetDir: string, file: string): Promise<boolean> {
+        const newFilePath = path.join(targetDir, file);
+        const defaultFilePath = path.join(this.context.extensionPath, 'resources', file);
+        
+        let newFileContent = fs.readFileSync(defaultFilePath, 'utf8');
 
         if (file === "docker-compose.yml") {
-            if (workspaceRoot.toLowerCase().endsWith('\\frank-runner')) {
-                vscode.window.showErrorMessage("Please add the docker-compose.yml manually.");
-                return false;
-            }
+            const configName = path.basename(targetDir);
 
-            const skeletonrcJSONPath = path.join(workspaceRoot, "skeletonrc.json");
-
-            if (fs.existsSync(skeletonrcJSONPath)) {
-                const skeletonrcJSON = JSON.parse(fs.readFileSync(skeletonrcJSONPath, 'utf8'));
-
-                newFile = newFile.replace("placeholder", skeletonrcJSON.mappings["{{ cookiecutter.instance_name_lc }}"]);
-            }
+            newFileContent = newFileContent.replace(/\{\{CONFIG_NAME\}\}/g, configName);
         }
         
-        fs.writeFileSync(newFilePath, newFile, "utf8");
-
+        fs.writeFileSync(newFilePath, newFileContent, "utf8");
         return true;
     }
 
     async getWorkingDirectory(file?: any): Promise<any> {
         const editor = vscode.window.activeTextEditor;
-        if(!editor) {
-            return;
-        }
-
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
-        if (!workspaceFolder) {
-            return undefined;
-        }
-        let workspaceRoot = workspaceFolder.uri.fsPath;
-
-        let currentDir = path.dirname(editor.document.uri.fsPath);
-        let lastDir = currentDir;
-
-        while (true) {
-            if (!file) {
-                if (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir) != null) {
-                    return currentDir;
-                }
-            } else if (file != "docker-compose.yml") {
-                if (fs.existsSync(path.join(currentDir, file))) {
-                    return currentDir;
-                }
-            } else if (this.getComposeFile(currentDir) != null) {
+        if (editor) {
+            const currentDir = path.dirname(editor.document.uri.fsPath);
+            
+            if (file && fs.existsSync(path.join(currentDir, file))) {
                 return currentDir;
             }
-
-            if (path.normalize(currentDir).endsWith(path.normalize("frank-runner/examples"))) {
-                workspaceRoot = currentDir;
+            if (!file && (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir))) {
+                return currentDir;
             }
-
-            if (currentDir === workspaceRoot) {
-                if (!file) {
-                    return undefined;
-                }
-
-                const choice = await vscode.window.showInformationMessage(
-                    `${file} doesn\'t exist in the current project. Create it?`,
-                    'Yes',
-                    'Cancel'
-                );
-                
-                if (choice === 'Yes') {
-                    const createdFile = await this.createFile(lastDir, file);
-                    return createdFile ? lastDir: null;
-                } else {
-                    return null;
-                }
-            }
-
-            const parentDir = path.dirname(currentDir);
-
-            if (parentDir === currentDir) {
-                return undefined;
-            }
-
-            lastDir = currentDir;
-            currentDir = parentDir;
         }
+
+        if (file === "docker-compose.yml") {
+            const choice = await vscode.window.showInformationMessage(
+                `No ${file} found in the immediate context. Would you like to generate one for a specific configuration?`,
+                'Yes',
+                'Cancel'
+            );
+
+            if (choice === 'Yes') {
+                const targetDir = await this.promptForConfigurationFolder(); 
+                if (targetDir) {
+                    const createdFile = await this.createFile(targetDir, file);
+                    return createdFile ? targetDir : null;
+                }
+            }
+            return null;
+        }
+
+        return undefined;
+  
     }
 
     getComposeFile(dir: any) {
@@ -350,28 +336,6 @@ class StartService {
         }
 
         await this.saveRanProject("ant", workingDir);
-    }
-
-    async startWithDocker(workingDir: any, isCurrent: any) {
-        if (isCurrent) {
-            workingDir = await this.getWorkingDirectory("Dockerfile");
-        }
-
-        if (!workingDir) {
-            return;
-        }
-
-        const projectName = path.basename(workingDir).toLocaleLowerCase();
-
-        var term = vscode.window.createTerminal('cmd');
-        term.show();
-    
-        term.sendText(`cd "${workingDir}"`);
-        term.sendText(`docker build -t ${projectName} .`);
-        term.sendText(`docker rm ${projectName}-container`);
-        term.sendText(`docker run --name ${projectName}-container ${projectName}`);
-        
-        await this.saveRanProject("docker", workingDir);
     }
 
     async startWithDockerCompose(workingDir: string | undefined, isCurrent: boolean) {

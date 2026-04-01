@@ -17,7 +17,6 @@ declare class StartService {
     ffVersionSet(workingDir: any): boolean;
     getSetFFVersion(workingDir: any): string;
     startWithAnt(workingDir: any, isCurrent: any): Promise<void>;
-    startWithDocker(workingDir: any, isCurrent: any): Promise<void>;
     startWithDockerCompose(workingDir: any, isCurrent: any): Promise<void>;
 }
 export default StartService;

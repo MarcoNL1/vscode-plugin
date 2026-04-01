@@ -261,7 +261,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
         switch (item.method) {
             case "ant": await startService.startWithAnt(item.path, isCurrent); break;
-            case "docker": await startService.startWithDocker(item.path, isCurrent); break;
             case "dockerCompose": await startService.startWithDockerCompose(item.path, isCurrent); break;
         }
     }
