@@ -65,22 +65,22 @@ suite('FrankRenameProvider Test Suite', () => {
     test('provideRenameEdits - Respect scope and handle multi-line correctly', () => {
         // A test configuration with two adapters and multi-line tags
         const xml = `
-<Configuration>
-    <Adapter name="Adapter1">
-        <Pipeline>
-            <Pipe 
-                name="TargetPipe" 
-                className="Dummy" />
-            <Forward path="TargetPipe" />
-        </Pipeline>
-    </Adapter>
-    <Adapter name="Adapter2">
-        <Pipeline>
-            <Pipe name="TargetPipe" />
-            <Forward path="TargetPipe" />
-        </Pipeline>
-    </Adapter>
-</Configuration>`.trim();
+        <Configuration>
+            <Adapter name="Adapter1">
+                <Pipeline>
+                    <Pipe 
+                        name="TargetPipe" 
+                        className="Dummy" />
+                    <Forward path="TargetPipe" />
+                </Pipeline>
+            </Adapter>
+            <Adapter name="Adapter2">
+                <Pipeline>
+                    <Pipe name="TargetPipe" />
+                    <Forward path="TargetPipe" />
+                </Pipeline>
+            </Adapter>
+        </Configuration>`.trim();
 
         const doc = createMockDocument(xml);
         // Set the cursor somewhere in the first "TargetPipe" string (in Adapter1)

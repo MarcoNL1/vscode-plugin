@@ -16,8 +16,7 @@ const start_tree_provider_1 = require("./start/start-tree-provider");
 const frank_validator_1 = require("./validation/frank-validator");
 const configuration_index_1 = require("./validation/configuration-index");
 const sessionKeyDefinitionProvider_1 = require("./navigation/sessionKeyDefinitionProvider");
-const frankRenameProvider_1 = require("./rename/frankRenameProvider");
-const sessionKeyRenameProvider_1 = require("./rename/sessionKeyRenameProvider");
+const masterRenameProvider_1 = require("./rename/masterRenameProvider");
 const frankRenameHintProvider_1 = require("./rename/frankRenameHintProvider");
 const pipeReferenceProvider_1 = require("./references/pipeReferenceProvider");
 let targets = null;
@@ -40,13 +39,11 @@ async function activate(context) {
     const flowViewProvider = new flow_view_provider_1.default(context);
     const documentSelector = { language: 'xml', scheme: 'file' };
     const sessionKeyProvider = new sessionKeyDefinitionProvider_1.SessionKeyDefinitionProvider();
-    const frankRenameProvider = new frankRenameProvider_1.FrankRenameProvider();
-    const sessionKeyRenameProvider = new sessionKeyRenameProvider_1.SessionKeyRenameProvider();
     const frankRenameHintProvider = new frankRenameHintProvider_1.FrankRenameHintProvider();
     const pipeReferenceProvider = new pipeReferenceProvider_1.PipeReferenceProvider();
     // Register hints
     frankRenameHintProvider.register(context);
-    context.subscriptions.push(vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerRenameProvider(documentSelector, frankRenameProvider), vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider), vscode.languages.registerRenameProvider(documentSelector, sessionKeyRenameProvider), vscode.window.registerWebviewViewProvider('flowView', flowViewProvider));
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider), vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider), vscode.window.registerWebviewViewProvider('flowView', flowViewProvider), vscode.languages.registerRenameProvider({ language: 'xml' }, new masterRenameProvider_1.MasterRenameProvider()));
     // Init start view
     const startTreeView = vscode.window.createTreeView("startTreeView", {
         treeDataProvider: startTreeProvider
@@ -213,9 +210,6 @@ async function activate(context) {
         switch (item.method) {
             case "ant":
                 await startService.startWithAnt(item.path, isCurrent);
-                break;
-            case "docker":
-                await startService.startWithDocker(item.path, isCurrent);
                 break;
             case "dockerCompose":
                 await startService.startWithDockerCompose(item.path, isCurrent);

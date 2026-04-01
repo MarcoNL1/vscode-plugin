@@ -38,20 +38,16 @@ export class FrankRenameProvider implements vscode.RenameProvider {
                 const nameAttr = el.getAttribute('name');
                 const pathAttr = el.getAttribute('path');
                 
-                // We check if this node in the current pipeline has the name or path that we are renaming
                 if (nameAttr === oldName || pathAttr === oldName) {
                     const startLine = (el as any).lineNumber - 1;
                     
-                    // Since XML tags can be spread across multiple lines (like in your XmlSwitchPipe),
-                    // we check if the cursor is on or just after the opening tag.
-                    // A margin of 20 lines is more than enough to capture large multi-line definitions.
                     if (position.line >= startLine && position.line <= startLine + 20) {
                         targetPipeline = pipeline;
                         break;
                     }
                 }
             }
-            if (targetPipeline) break; // Once we have the correct pipeline, we stop searching
+            if (targetPipeline) break;
         }
 
         if (!targetPipeline) {
@@ -147,8 +143,5 @@ export class FrankRenameProvider implements vscode.RenameProvider {
                 };
             }
         }
-
-        // If the cursor is on the line but not strictly inside the attribute value
-        throw new Error("Place the cursor explicitly inside the quotes of the name or path attribute.");
     }
 }
