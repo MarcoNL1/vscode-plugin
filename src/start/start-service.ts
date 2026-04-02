@@ -10,6 +10,32 @@ class StartService {
         this.context = context;
     }
 
+    async getFrankRunnerPath(workingDir: string): Promise<string | null> {
+    let currentDir = workingDir;
+
+    while (true) {
+        const potentialRunnerPath = path.join(currentDir, 'frank-runner');
+        if (fs.existsSync(potentialRunnerPath)) {
+            return potentialRunnerPath;
+        }
+
+        const parentDir = path.dirname(currentDir);
+        if (parentDir === currentDir) {
+            break;
+        }
+        currentDir = parentDir;
+    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders || [];
+    for (const folder of workspaceFolders) {
+        if (folder.name.toLowerCase() === 'frank-runner' || folder.uri.fsPath.endsWith('frank-runner')) {
+            return folder.uri.fsPath;
+        }
+    }
+
+    return null;
+}
+
     ensureRanProjectsFileExists() {
         const storageDir = this.context.globalStorageUri.fsPath;
         const ranProjectsPath = path.join(storageDir, 'ranProjects.json');
@@ -323,17 +349,20 @@ class StartService {
         if (!workingDir) {
             return;
         }
+
+        const runnerPath = await this.getFrankRunnerPath(workingDir);
+        if (!runnerPath) {
+            vscode.window.showErrorMessage("Could not locate the frank-runner directory. Ensure it is cloned or added to your workspace.");
+            return;
+        }
         
         const term = vscode.window.createTerminal("Frank Ant");
         term.show();
 
         term.sendText(`cd "${workingDir}"`);
 
-        if (workingDir.includes('frank-runner\\examples')) {
-            term.sendText(`../../ant.bat`);
-        } else {
-            term.sendText(`../frank-runner/ant.bat`);
-        }
+        const antBatPath = path.join(runnerPath, "ant.bat");
+        term.sendText(`"${antBatPath}"`);
 
         await this.saveRanProject("ant", workingDir);
     }
