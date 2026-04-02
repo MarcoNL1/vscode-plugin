@@ -199,11 +199,37 @@ export async function activate(context: vscode.ExtensionContext) {
             const workspaceFolders = vscode.workspace.workspaceFolders || [];
             const nextIndex = workspaceFolders.length;
 
-            vscode.workspace.updateWorkspaceFolders(nextIndex, 0, 
-                { uri: targetProjectDirUri, name: projectNameTrimmed },
-                { uri: frankRunnerDirUri, name: "frank-runner" }
-            );
+            const foldersToAdd: { uri: vscode.Uri, name?: string }[] = [];
 
+            const isPathCoveredByWorkspace = (targetPath: string): boolean => {
+                return workspaceFolders.some(folder => {
+                    const relativePath = path.relative(folder.uri.fsPath, targetPath);
+                    // If the relative path doesn't start with '..' and is not absolute,
+                    // it means the targetPath is INSIDE (or exactly matches) the folder.
+                    return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+                });
+            };
+
+            // 1. Check if the project is already covered by the workspace
+            if (!isPathCoveredByWorkspace(targetProjectDirUri.fsPath)) {
+                foldersToAdd.push({ uri: targetProjectDirUri, name: projectNameTrimmed });
+            }
+
+            // 2. Check if THIS specific frank-runner is already covered by the workspace
+            if (!isPathCoveredByWorkspace(frankRunnerDirUri.fsPath)) {
+                foldersToAdd.push({ uri: frankRunnerDirUri, name: "frank-runner" });
+            }
+
+            // 3. Execute the workspace update ONLY if there is new data to inject
+            if (foldersToAdd.length > 0) {
+                const success = vscode.workspace.updateWorkspaceFolders(nextIndex, 0, ...foldersToAdd);
+                
+                if (!success) {
+                    vscode.window.showErrorMessage("Failed to add the new project to the VS Code workspace.");
+                }
+            }
+
+            // Open the configuration file in the editor
             const configFilePath = vscode.Uri.file(path.join(targetProjectDir, 'configurations', configNameTrimmed, 'Configuration.xml'));
             vscode.window.showTextDocument(configFilePath);
             vscode.env.openExternal(vscode.Uri.parse("https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-structure-and-customisation"));
