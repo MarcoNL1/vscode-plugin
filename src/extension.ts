@@ -161,23 +161,51 @@ export async function activate(context: vscode.ExtensionContext) {
             if (!configName) return;
             configNameTrimmed = configName.trim();
 
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (!workspaceFolders || workspaceFolders.length === 0) {
-                vscode.window.showErrorMessage('No workspace folder open');
+            const folderUris = await vscode.window.showOpenDialog({
+                canSelectFiles: false,
+                canSelectFolders: true,
+                canSelectMany: false,
+                openLabel: 'Select Project Destination',
+                title: "Choose where to generate the Simple Frank!"
+            });
+
+            if (!folderUris || folderUris.length === 0) return;
+
+            const rootPath = folderUris[0].fsPath;
+
+            const targetProjectDir = path.join(rootPath, projectNameTrimmed);
+            if (fs.existsSync(targetProjectDir)) {
+                vscode.window.showErrorMessage(`A directory named '${projectNameTrimmed}' already exists in the selected destination.`);
                 return;
             }
-            const rootPath = workspaceFolders[0].uri.fsPath;
 
-            if (!fs.existsSync(path.join(rootPath, "frank-runner"))) {
+            try {
+                if (!fs.existsSync(path.join(rootPath, "frank-runner"))) {
                 await execAsync('git clone https://github.com/wearefrank/frank-runner.git', rootPath);
             }
-
+            }
+            catch (error) {
+                vscode.window.showErrorMessage(`Failed to clone repository: ${error}`);
+            }
+                
             const simpleFrankPath = vscode.Uri.file(path.join(context.extensionPath, 'resources/simpleFrank/projectName'));
             const targetDir = vscode.Uri.file(path.join(rootPath, projectNameTrimmed));
 
             await copyDir(simpleFrankPath, targetDir);
 
-            vscode.window.showTextDocument(vscode.Uri.file(path.join(rootPath, projectNameTrimmed, 'configurations', configNameTrimmed, 'Configuration.xml')));
+            const targetProjectDirUri = vscode.Uri.file(targetProjectDir);
+            const frankRunnerDirUri = vscode.Uri.file(path.join(rootPath, "frank-runner"));
+
+            const workspaceFolders = vscode.workspace.workspaceFolders || [];
+            const nextIndex = workspaceFolders.length;
+
+            vscode.workspace.updateWorkspaceFolders(nextIndex, 0, 
+                { uri: targetProjectDirUri, name: projectNameTrimmed },
+                { uri: frankRunnerDirUri, name: "frank-runner" }
+            );
+
+            const configFilePath = vscode.Uri.file(path.join(targetProjectDir, 'configurations', configNameTrimmed, 'Configuration.xml'));
+            vscode.window.showTextDocument(configFilePath);
             vscode.env.openExternal(vscode.Uri.parse("https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-structure-and-customisation"));
         }
     });
