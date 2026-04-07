@@ -23,7 +23,9 @@ let configNameTrimmed = "";
 
 export async function activate(context: vscode.ExtensionContext) {
     console.log('Activating WeAreFrank! Extension...');
-    
+
+    const config = vscode.workspace.getConfiguration('frank');
+
     // Initialize the global workspace index for cross-file validation
     const configurationIndex = new ConfigurationIndex();
     await configurationIndex.buildIndex();
@@ -49,15 +51,30 @@ export async function activate(context: vscode.ExtensionContext) {
     const frankRenameHintProvider = new FrankRenameHintProvider();
     const pipeReferenceProvider = new PipeReferenceProvider();
 
-    // Register hints
-    frankRenameHintProvider.register(context);
+    if (config.get('enableRename')) {
+        frankRenameHintProvider.register(context);
+        context.subscriptions.push(
+            vscode.languages.registerRenameProvider({ language: 'xml' }, new MasterRenameProvider())
+        );
+    }
 
-    context.subscriptions.push(
-        vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider),
-        vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider),
-        vscode.window.registerWebviewViewProvider('flowView', flowViewProvider),
-        vscode.languages.registerRenameProvider({ language: 'xml' }, new MasterRenameProvider())
-    );
+    if (config.get('enableGoToDefinition')) {
+        context.subscriptions.push(
+            vscode.languages.registerDefinitionProvider(documentSelector, sessionKeyProvider)
+        );
+    }
+
+    if (config.get('enableFindReferences')) {
+        context.subscriptions.push(
+            vscode.languages.registerReferenceProvider(documentSelector, pipeReferenceProvider)
+        );
+    }
+
+    if (config.get('enableFlowVisualization')) {
+        context.subscriptions.push(
+            vscode.window.registerWebviewViewProvider('flowView', flowViewProvider)
+        );
+    }
 
     // Init start view
     const startTreeView = vscode.window.createTreeView("startTreeView", {
@@ -74,14 +91,18 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidSaveTextDocument(async doc => {
             if (doc.languageId === 'xml') {
                 await configurationIndex.updateFile(doc.uri);
-                
-                vscode.workspace.textDocuments.forEach(openDoc => {
-                    if (openDoc.languageId === 'xml') {
-                        frankValidator.validate(openDoc);
-                    }
-                });
 
-                flowViewProvider.updateWebview();
+                if (config.get('enableValidation')) {
+                    vscode.workspace.textDocuments.forEach(openDoc => {
+                        if (openDoc.languageId === 'xml') {
+                            frankValidator.validate(openDoc);
+                        }
+                    });
+                }
+
+                if (config.get('enableFlowVisualization')) {
+                    flowViewProvider.updateWebview();
+                }
             }
         }),
 
@@ -90,14 +111,31 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document.languageId === 'xml') frankValidator.validate(e.document);
+            if (e.document.languageId === 'xml' && config.get('enableValidation')) {
+                frankValidator.validate(e.document);
+            }
         }),
-        
+
         vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)),
-        
+
         vscode.window.onDidChangeActiveTextEditor(() => {
             setStartTreeViewDescription();
-            flowViewProvider.updateWebview();
+            if (config.get('enableFlowVisualization')) {
+                flowViewProvider.updateWebview();
+            }
+        }),
+
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('frank')) {
+                vscode.window.showInformationMessage(
+                    'Frank!Framework settings changed. Reload the window to apply.',
+                    'Reload Window'
+                ).then(selection => {
+                    if (selection === 'Reload Window') {
+                        vscode.commands.executeCommand('workbench.action.reloadWindow');
+                    }
+                });
+            }
         })
     );
 
@@ -274,7 +312,7 @@ export async function activate(context: vscode.ExtensionContext) {
         });
     }
 
-    vscode.languages.registerDocumentLinkProvider({ language: 'xml', scheme: 'file' }, {
+    if (config.get('enableDocumentLinks')) { vscode.languages.registerDocumentLinkProvider({ language: 'xml', scheme: 'file' }, {
         provideDocumentLinks(document, token) {
             const links = [];
             const text = document.getText();
@@ -299,15 +337,19 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             return links;
         }
-    });
+    }); }
 
     // Execute Startup Actions
     setStartTreeViewDescription();
-    snippetsService.ensureSnippetsFilesExists();
-    snippetsService.loadFrankFrameworkSnippets();
-    vscode.commands.executeCommand("workbench.view.extension.flowViewContainer");
+    if (config.get('enableSnippets')) {
+        snippetsService.ensureSnippetsFilesExists();
+        snippetsService.loadFrankFrameworkSnippets();
+    }
+    if (config.get('enableFlowVisualization')) {
+        vscode.commands.executeCommand("workbench.view.extension.flowViewContainer");
+    }
 
-    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'xml') {
+    if (config.get('enableValidation') && vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'xml') {
         frankValidator.validate(vscode.window.activeTextEditor.document);
     }
 }
