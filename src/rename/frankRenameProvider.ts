@@ -135,7 +135,7 @@ export class FrankRenameProvider implements vscode.RenameProvider {
             if (position.character >= valueStartIndex && position.character <= valueEndIndex) {
                 const startPos = new vscode.Position(position.line, valueStartIndex);
                 const endPos = new vscode.Position(position.line, valueEndIndex);
-                
+
                 // Explicitly tell VS Code exactly what text to select and replace
                 return {
                     range: new vscode.Range(startPos, endPos),
@@ -143,5 +143,7 @@ export class FrankRenameProvider implements vscode.RenameProvider {
                 };
             }
         }
+
+        throw new Error("Place the cursor explicitly inside the quotes of a 'name' or 'path' attribute.");
     }
 }
