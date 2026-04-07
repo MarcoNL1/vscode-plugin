@@ -1,5 +1,4 @@
 node_modules 
 # VS Code Test downloads
 .vscode-test/
-CLAUDE.md
 .claude/
