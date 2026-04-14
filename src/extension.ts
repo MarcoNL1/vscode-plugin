@@ -82,10 +82,12 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     // Init snippets view
-    vscode.window.createTreeView("snippetsTreeView", {
-        treeDataProvider: snippetsTreeProvider,
-        dragAndDropController: snippetsDndController
-    });
+    if (config.get('enableSnippets')) {
+            vscode.window.createTreeView("snippetsTreeView", {
+            treeDataProvider: snippetsTreeProvider,
+            dragAndDropController: snippetsDndController
+        });
+    }
 
     context.subscriptions.push(
         vscode.workspace.onDidSaveTextDocument(async doc => {

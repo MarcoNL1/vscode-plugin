@@ -278,7 +278,8 @@
         {
           "id": "snippetsTreeView",
           "name": "Frank!Snippets",
-          "icon": "$(symbol-snippet)"
+          "icon": "$(symbol-snippet)",
+          "when": "config.frank.enableSnippets"
         }
       ]
     },
