@@ -258,7 +258,8 @@
           "id": "flowView",
           "name": "Flow",
           "type": "webview",
-          "icon": "$(symbol-icon)"
+          "icon": "$(symbol-icon)",
+          "when": "config.frank.enableFlowVisualization"
         }
       ],
       "welcomeViewContainer": [
