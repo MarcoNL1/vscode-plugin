@@ -112,6 +112,7 @@ class FrankRenameProvider {
                 };
             }
         }
+        throw new Error("Place the cursor explicitly inside the quotes of a 'name' or 'path' attribute.");
     }
 }
 exports.FrankRenameProvider = FrankRenameProvider;

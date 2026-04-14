@@ -76,8 +76,9 @@ suite('FrankRenameProvider Test Suite', () => {
             </Adapter>
         </Configuration>`.trim();
         const doc = createMockDocument(xml);
-        // Set the cursor somewhere in the first "TargetPipe" string (in Adapter1)
-        const position = new vscode.Position(4, 25);
+        // Line 4 is '                        name="TargetPipe" ' (24 spaces + name="...)
+        // 'TargetPipe' starts at index 30; cursor at 32 lands on 'r', inside the value
+        const position = new vscode.Position(4, 32);
         const edit = provider.provideRenameEdits(doc, position, "NieuwePipeNaam", {});
         assert.ok(edit, "WorkspaceEdit should not be null");
         const changes = edit.entries();
