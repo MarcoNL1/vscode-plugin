@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const child_process_1 = require("child_process");
 const CONFIG_SUBFOLDERS = ['xml', 'xsl', 'xsd', 'json', 'jsonschema', 'ds'];
-function showCreateFrankView(context) {
+function showCreateFrankView(context, template) {
     const panel = vscode.window.createWebviewPanel('createFrank', 'Create a Frank!', vscode.ViewColumn.One, {
         enableScripts: true,
         localResourceRoots: [
@@ -14,7 +14,7 @@ function showCreateFrankView(context) {
         ]
     });
     const css = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'resources', 'css', 'create-frank-view-webcontent.css'));
-    panel.webview.html = getWebviewContent(css.toString());
+    panel.webview.html = getWebviewContent(css.toString(), template);
     panel.webview.onDidReceiveMessage(async (message) => {
         switch (message.command) {
             case 'pickFolder': {
@@ -31,19 +31,27 @@ function showCreateFrankView(context) {
                 break;
             }
             case 'submit': {
-                await handleSubmit(context, panel, message.frankName, message.rootDir, message.configurations);
+                await handleSubmit(context, panel, message.frankName, message.rootDir, message.configurations, template);
                 break;
             }
         }
     }, null, context.subscriptions);
 }
-async function handleSubmit(context, panel, frankName, rootDir, configurations) {
+async function handleSubmit(context, panel, frankName, rootDir, configurations, template) {
     const frankNameLower = frankName.toLowerCase();
     const targetProjectDir = path.join(rootDir, frankNameLower);
     if (fs.existsSync(targetProjectDir)) {
         panel.webview.postMessage({ command: 'error', message: `Directory '${frankNameLower}' already exists in the selected location.` });
         return;
     }
+    if (template === 'skeleton') {
+        await handleSkeletonSubmit(panel, frankNameLower, rootDir, targetProjectDir);
+    }
+    else {
+        await handleSimpleSubmit(context, panel, frankNameLower, rootDir, targetProjectDir, configurations);
+    }
+}
+async function handleSimpleSubmit(context, panel, frankNameLower, rootDir, targetProjectDir, configurations) {
     // STEP 1: Clone frank-runner if not present
     try {
         if (!fs.existsSync(path.join(rootDir, 'frank-runner'))) {
@@ -97,8 +105,44 @@ async function handleSubmit(context, panel, frankName, rootDir, configurations) 
     // STEP 5: Open first configuration file and close the panel
     const firstConfigPath = vscode.Uri.file(path.join(configurationsDir, configurations[0].toLowerCase(), 'Configuration.xml'));
     vscode.window.showTextDocument(firstConfigPath);
-    vscode.env.openExternal(vscode.Uri.parse('https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-structure-and-customisation'));
     panel.dispose();
+    vscode.window.showInformationMessage('Frank project created! Check the frank-runner docs for project structure and customisation.', 'Open Docs').then(choice => {
+        if (choice === 'Open Docs') {
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-structure-and-customisation'));
+        }
+    });
+}
+async function handleSkeletonSubmit(panel, frankNameLower, rootDir, targetProjectDir) {
+    // STEP 1: Clone the frank-skeleton repo into the target directory
+    try {
+        await execAsync(`git clone https://github.com/wearefrank/skeleton.git "${frankNameLower}"`, rootDir);
+    }
+    catch (error) {
+        panel.webview.postMessage({ command: 'error', message: `Failed to clone frank-skeleton: ${error}` });
+        return;
+    }
+    // STEP 2: Remove .git so the user starts with a clean repo
+    const gitDir = path.join(targetProjectDir, '.git');
+    if (fs.existsSync(gitDir)) {
+        fs.rmSync(gitDir, { recursive: true, force: true });
+    }
+    // STEP 3: Add project to workspace
+    const targetProjectDirUri = vscode.Uri.file(targetProjectDir);
+    const workspaceFolders = vscode.workspace.workspaceFolders || [];
+    const nextIndex = workspaceFolders.length;
+    const alreadyInWorkspace = workspaceFolders.some(folder => {
+        const relativePath = path.relative(folder.uri.fsPath, targetProjectDir);
+        return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+    });
+    if (!alreadyInWorkspace) {
+        vscode.workspace.updateWorkspaceFolders(nextIndex, 0, { uri: targetProjectDirUri, name: frankNameLower });
+    }
+    panel.dispose();
+    vscode.window.showInformationMessage('Frank Skeleton project created! Check the skeleton repo for next steps.', 'Open Repo').then(choice => {
+        if (choice === 'Open Repo') {
+            vscode.env.openExternal(vscode.Uri.parse('https://github.com/wearefrank/skeleton'));
+        }
+    });
 }
 function execAsync(command, cwd) {
     return new Promise((resolve, reject) => {
@@ -112,7 +156,9 @@ function execAsync(command, cwd) {
         });
     });
 }
-function getWebviewContent(css) {
+function getWebviewContent(css, template) {
+    const isSkeleton = template === 'skeleton';
+    const configurationsHidden = isSkeleton ? ' style="display:none"' : '';
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -141,7 +187,7 @@ function getWebviewContent(css) {
             </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="configurations-group"${configurationsHidden}>
             <label>Configurations <span class="required">*</span></label>
             <span class="hint">Folder names will be lowercased</span>
             <div id="configurations-list"></div>
@@ -155,6 +201,7 @@ function getWebviewContent(css) {
 
     <script>
         const vscode = acquireVsCodeApi();
+        const isSkeleton = ${isSkeleton};
 
         let configCount = 0;
 
@@ -213,7 +260,7 @@ function getWebviewContent(css) {
 
             if (!frankName) { showError('Frank Name is required.'); return; }
             if (!rootDir) { showError('Root Directory is required.'); return; }
-            if (configurations.length === 0) { showError('At least one configuration name is required.'); return; }
+            if (!isSkeleton && configurations.length === 0) { showError('At least one configuration name is required.'); return; }
 
             document.getElementById('createBtn').disabled = true;
             document.getElementById('createBtn').textContent = 'Creating...';
@@ -233,7 +280,7 @@ function getWebviewContent(css) {
         });
 
         // Initialize with one configuration input
-        addConfig();
+        if (!isSkeleton) { addConfig(); }
     </script>
 </body>
 </html>`;
