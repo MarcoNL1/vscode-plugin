@@ -101,25 +101,24 @@ async function handleSubmit(
     boilerplate: boolean,
     template: 'simple' | 'skeleton'
 ): Promise<void> {
-    const frankNameLower = frankName.toLowerCase();
-    const targetProjectDir = path.join(rootDir, frankNameLower);
+    const targetProjectDir = path.join(rootDir, frankName);
 
     if (fs.existsSync(targetProjectDir)) {
-        panel.webview.postMessage({ command: 'error', message: `Directory '${frankNameLower}' already exists in the selected location.` });
+        panel.webview.postMessage({ command: 'error', message: `Directory '${frankName}' already exists in the selected location.` });
         return;
     }
 
     if (template === 'skeleton') {
-        await handleSkeletonSubmit(panel, frankNameLower, rootDir, targetProjectDir);
+        await handleSkeletonSubmit(panel, frankName, rootDir, targetProjectDir);
     } else {
-        await handleSimpleSubmit(context, panel, frankNameLower, rootDir, targetProjectDir, configurations, boilerplate);
+        await handleSimpleSubmit(context, panel, frankName, rootDir, targetProjectDir, configurations, boilerplate);
     }
 }
 
 async function handleSimpleSubmit(
     context: vscode.ExtensionContext,
     panel: vscode.WebviewPanel,
-    frankNameLower: string,
+    frankName: string,
     rootDir: string,
     targetProjectDir: string,
     configurations: string[],
@@ -150,8 +149,7 @@ async function handleSimpleSubmit(
     fs.mkdirSync(configurationsDir);
 
     for (const configName of configurations) {
-        const configNameLower = configName.toLowerCase();
-        const configDir = path.join(configurationsDir, configNameLower);
+        const configDir = path.join(configurationsDir, configName);
         fs.mkdirSync(configDir);
         fs.writeFileSync(path.join(configDir, 'Configuration.xml'), CONFIGURATION_XML, 'utf8');
 
@@ -180,7 +178,7 @@ async function handleSimpleSubmit(
 
     const foldersToAdd: { uri: vscode.Uri; name?: string }[] = [];
     if (!isPathCoveredByWorkspace(targetProjectDirUri.fsPath)) {
-        foldersToAdd.push({ uri: targetProjectDirUri, name: frankNameLower });
+        foldersToAdd.push({ uri: targetProjectDirUri, name: frankName });
     }
     if (!isPathCoveredByWorkspace(frankRunnerDirUri.fsPath)) {
         foldersToAdd.push({ uri: frankRunnerDirUri, name: 'frank-runner' });
@@ -191,7 +189,7 @@ async function handleSimpleSubmit(
 
     // STEP 5: Open first configuration file and close the panel
     const firstConfigPath = vscode.Uri.file(
-        path.join(configurationsDir, configurations[0].toLowerCase(), 'Configuration.xml')
+        path.join(configurationsDir, configurations[0], 'Configuration.xml')
     );
     vscode.window.showTextDocument(firstConfigPath);
     panel.dispose();
@@ -207,13 +205,13 @@ async function handleSimpleSubmit(
 
 async function handleSkeletonSubmit(
     panel: vscode.WebviewPanel,
-    frankNameLower: string,
+    frankName: string,
     rootDir: string,
     targetProjectDir: string
 ): Promise<void> {
     // STEP 1: Clone the frank-skeleton repo into the target directory
     try {
-        await execAsync(`git clone https://github.com/wearefrank/skeleton.git "${frankNameLower}"`, rootDir);
+        await execAsync(`git clone https://github.com/wearefrank/skeleton.git "${frankName}"`, rootDir);
     } catch (error) {
         panel.webview.postMessage({ command: 'error', message: `Failed to clone frank-skeleton: ${error}` });
         return;
@@ -236,7 +234,7 @@ async function handleSkeletonSubmit(
     });
 
     if (!alreadyInWorkspace) {
-        vscode.workspace.updateWorkspaceFolders(nextIndex, 0, { uri: targetProjectDirUri, name: frankNameLower });
+        vscode.workspace.updateWorkspaceFolders(nextIndex, 0, { uri: targetProjectDirUri, name: frankName });
     }
 
     panel.dispose();
@@ -280,7 +278,6 @@ function getWebviewContent(css: string, template: 'simple' | 'skeleton'): string
         <div class="form-group">
             <label for="frankName">Frank Name <span class="required">*</span></label>
             <input type="text" id="frankName" placeholder="my-frank-project" autocomplete="off" />
-            <span class="hint">Folder name will be lowercased</span>
         </div>
 
         <div class="form-group">
@@ -293,7 +290,6 @@ function getWebviewContent(css: string, template: 'simple' | 'skeleton'): string
 
         <div class="form-group" id="configurations-group"${configurationsHidden}>
             <label>Configurations <span class="required">*</span></label>
-            <span class="hint">Folder names will be lowercased</span>
             <div id="configurations-list"></div>
             <button class="add-button" id="addConfigBtn" type="button">+ Add Configuration</button>
         </div>
