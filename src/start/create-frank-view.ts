@@ -3,7 +3,48 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
 
-const CONFIG_SUBFOLDERS = ['xml', 'xsl', 'xsd', 'json', 'jsonschema', 'ds'];
+// Nested subfolder paths created inside each configuration directory
+const CONFIG_SUBFOLDERS = ['XML/XSL', 'XML/XSD', 'JSON/ds', 'JSON/jsonschema'];
+
+const CONFIGURATION_XML = `<Configuration
+\txmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+\txsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
+\t>
+\t<Adapter name="Adapter1a">
+\t\t<Receiver name="Receiver1a">
+\t\t\t<ApiListener name="Listener1a" uriPattern="service1a"/>
+\t\t</Receiver>
+\t\t<Pipeline>
+\t\t\t<EchoPipe name="HelloWorld" getInputFromFixedValue="Hello World!"/>
+\t\t</Pipeline>
+\t</Adapter>
+</Configuration>`;
+
+// Boilerplate starter files written into each subfolder when the option is enabled
+const BOILERPLATE_FILES: Record<string, string> = {
+    'XML/XSL/example.xsl': `<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+\t<xsl:output method="xml" indent="yes"/>
+
+\t<xsl:template match="/">
+\t\t<!-- Transform your XML here -->
+\t</xsl:template>
+</xsl:stylesheet>`,
+    'XML/XSD/example.xsd': `<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+\t<!-- Define your XML schema here -->
+</xs:schema>`,
+    'JSON/ds/example-datasource.json': `{
+\t"name": "example",
+\t"type": "org.h2.jdbcx.JdbcDataSource",
+\t"url": "jdbc:h2:mem:example;NON_KEYWORDS=VALUE;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1;"
+}`,
+    'JSON/jsonschema/example-schema.json': `{
+\t"$schema": "http://json-schema.org/draft-07/schema#",
+\t"type": "object",
+\t"properties": {}
+}`,
+};
 
 export function showCreateFrankView(context: vscode.ExtensionContext, template: 'simple' | 'skeleton'): void {
     const panel = vscode.window.createWebviewPanel(
@@ -41,7 +82,7 @@ export function showCreateFrankView(context: vscode.ExtensionContext, template: 
                     break;
                 }
                 case 'submit': {
-                    await handleSubmit(context, panel, message.frankName, message.rootDir, message.configurations, template);
+                    await handleSubmit(context, panel, message.frankName, message.rootDir, message.configurations, message.boilerplate, template);
                     break;
                 }
             }
@@ -57,6 +98,7 @@ async function handleSubmit(
     frankName: string,
     rootDir: string,
     configurations: string[],
+    boilerplate: boolean,
     template: 'simple' | 'skeleton'
 ): Promise<void> {
     const frankNameLower = frankName.toLowerCase();
@@ -70,7 +112,7 @@ async function handleSubmit(
     if (template === 'skeleton') {
         await handleSkeletonSubmit(panel, frankNameLower, rootDir, targetProjectDir);
     } else {
-        await handleSimpleSubmit(context, panel, frankNameLower, rootDir, targetProjectDir, configurations);
+        await handleSimpleSubmit(context, panel, frankNameLower, rootDir, targetProjectDir, configurations, boilerplate);
     }
 }
 
@@ -80,7 +122,8 @@ async function handleSimpleSubmit(
     frankNameLower: string,
     rootDir: string,
     targetProjectDir: string,
-    configurations: string[]
+    configurations: string[],
+    boilerplate: boolean
 ): Promise<void> {
     // STEP 1: Clone frank-runner if not present
     try {
@@ -106,19 +149,20 @@ async function handleSimpleSubmit(
     const configurationsDir = path.join(targetProjectDir, 'configurations');
     fs.mkdirSync(configurationsDir);
 
-    const configXmlTemplate = fs.readFileSync(
-        path.join(templateDir, 'configurations', 'configName', 'Configuration.xml'),
-        'utf8'
-    );
-
     for (const configName of configurations) {
         const configNameLower = configName.toLowerCase();
         const configDir = path.join(configurationsDir, configNameLower);
         fs.mkdirSync(configDir);
-        fs.writeFileSync(path.join(configDir, 'Configuration.xml'), configXmlTemplate);
+        fs.writeFileSync(path.join(configDir, 'Configuration.xml'), CONFIGURATION_XML, 'utf8');
 
         for (const subfolder of CONFIG_SUBFOLDERS) {
-            fs.mkdirSync(path.join(configDir, subfolder));
+            fs.mkdirSync(path.join(configDir, subfolder), { recursive: true });
+        }
+
+        if (boilerplate) {
+            for (const [relativePath, content] of Object.entries(BOILERPLATE_FILES)) {
+                fs.writeFileSync(path.join(configDir, relativePath), content, 'utf8');
+            }
         }
     }
 
@@ -254,6 +298,14 @@ function getWebviewContent(css: string, template: 'simple' | 'skeleton'): string
             <button class="add-button" id="addConfigBtn" type="button">+ Add Configuration</button>
         </div>
 
+        <div class="form-group"${configurationsHidden}>
+            <label class="checkbox-label">
+                <input type="checkbox" id="boilerplateCheck" />
+                Generate boilerplate files
+            </label>
+            <span class="hint">Creates starter XSL, XSD, datasource, and JSON schema files in each configuration's subfolders</span>
+        </div>
+
         <div class="actions">
             <button class="primary-button" id="createBtn" type="button">Create Frank!</button>
         </div>
@@ -322,10 +374,12 @@ function getWebviewContent(css: string, template: 'simple' | 'skeleton'): string
             if (!rootDir) { showError('Root Directory is required.'); return; }
             if (!isSkeleton && configurations.length === 0) { showError('At least one configuration name is required.'); return; }
 
+            const boilerplate = document.getElementById('boilerplateCheck').checked;
+
             document.getElementById('createBtn').disabled = true;
             document.getElementById('createBtn').textContent = 'Creating...';
 
-            vscode.postMessage({ command: 'submit', frankName, rootDir, configurations });
+            vscode.postMessage({ command: 'submit', frankName, rootDir, configurations, boilerplate });
         });
 
         window.addEventListener('message', event => {

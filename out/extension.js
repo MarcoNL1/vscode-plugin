@@ -132,17 +132,12 @@ async function activate(context) {
     });
     vscode.commands.registerCommand("frank.startCurrent", async function (item) {
         await startHandler(item, true);
-        startTreeProvider.rebuild();
+        await startTreeProvider.rebuild();
         startTreeProvider.refresh();
     });
     vscode.commands.registerCommand("frank.startProject", async function (item) {
         await startHandler(item, false);
-        startTreeProvider.rebuild();
-        startTreeProvider.refresh();
-    });
-    vscode.commands.registerCommand("frank.deleteProject", async function (item) {
-        await startService.deleteRanProject(item.method, item.path);
-        startTreeProvider.rebuild();
+        await startTreeProvider.rebuild();
         startTreeProvider.refresh();
     });
     vscode.commands.registerCommand("frank.toggleUpdate", async (item) => {
