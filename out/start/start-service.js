@@ -7,6 +7,27 @@ class StartService {
     constructor(context) {
         this.context = context;
     }
+    async getFrankRunnerPath(workingDir) {
+        let currentDir = workingDir;
+        while (true) {
+            const potentialRunnerPath = path.join(currentDir, 'frank-runner');
+            if (fs.existsSync(potentialRunnerPath)) {
+                return potentialRunnerPath;
+            }
+            const parentDir = path.dirname(currentDir);
+            if (parentDir === currentDir) {
+                break;
+            }
+            currentDir = parentDir;
+        }
+        const workspaceFolders = vscode.workspace.workspaceFolders || [];
+        for (const folder of workspaceFolders) {
+            if (folder.name.toLowerCase() === 'frank-runner' || folder.uri.fsPath.endsWith('frank-runner')) {
+                return folder.uri.fsPath;
+            }
+        }
+        return null;
+    }
     ensureRanProjectsFileExists() {
         const storageDir = this.context.globalStorageUri.fsPath;
         const ranProjectsPath = path.join(storageDir, 'ranProjects.json');
@@ -55,12 +76,18 @@ class StartService {
     async getWorkingDirectory(file) {
         const editor = vscode.window.activeTextEditor;
         if (editor) {
-            const currentDir = path.dirname(editor.document.uri.fsPath);
-            if (file && fs.existsSync(path.join(currentDir, file))) {
-                return currentDir;
-            }
-            if (!file && (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir))) {
-                return currentDir;
+            let currentDir = path.dirname(editor.document.uri.fsPath);
+            while (true) {
+                if (file && fs.existsSync(path.join(currentDir, file))) {
+                    return currentDir;
+                }
+                if (!file && (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir))) {
+                    return currentDir;
+                }
+                const parentDir = path.dirname(currentDir);
+                if (parentDir === currentDir)
+                    break;
+                currentDir = parentDir;
             }
         }
         if (file === "docker-compose.yml") {
@@ -117,6 +144,7 @@ class StartService {
         if (file.startsWith('ibis-adapterframework-webapp')) {
             return true;
         }
+        return false;
     }
     async toggleUpdate(workingDir) {
         const FFOptions = [];
@@ -231,10 +259,13 @@ class StartService {
     }
     getSetFFVersion(workingDir) {
         const frankRunnerPropertiesFile = path.join(workingDir, "frank-runner.properties");
-        let frankRunnerProperties = fs.readFileSync(frankRunnerPropertiesFile, "utf8");
-        const match = frankRunnerProperties.match(/^\s*ff\.version=.*$/m);
-        const setFFversion = match ? match[0].split("=")[1] : "";
-        return setFFversion;
+        if (fs.existsSync(frankRunnerPropertiesFile)) {
+            let frankRunnerProperties = fs.readFileSync(frankRunnerPropertiesFile, "utf8");
+            const match = frankRunnerProperties.match(/^\s*ff\.version=.*$/m);
+            const setFFversion = match ? match[0].split("=")[1] : "";
+            return setFFversion;
+        }
+        return false;
     }
     async startWithAnt(workingDir, isCurrent) {
         if (isCurrent) {
@@ -243,15 +274,16 @@ class StartService {
         if (!workingDir) {
             return;
         }
+        const runnerPath = await this.getFrankRunnerPath(workingDir);
+        if (!runnerPath) {
+            vscode.window.showErrorMessage("Could not locate the frank-runner directory. Ensure it is cloned or added to your workspace.");
+            return;
+        }
         const term = vscode.window.createTerminal("Frank Ant");
         term.show();
         term.sendText(`cd "${workingDir}"`);
-        if (workingDir.includes('frank-runner\\examples')) {
-            term.sendText(`../../ant.bat`);
-        }
-        else {
-            term.sendText(`../frank-runner/ant.bat`);
-        }
+        const antBatPath = path.join(runnerPath, "ant.bat");
+        term.sendText(`& "${antBatPath}"`);
         await this.saveRanProject("ant", workingDir);
     }
     async startWithDockerCompose(workingDir, isCurrent) {
@@ -265,7 +297,7 @@ class StartService {
         term.show();
         term.sendText(`cd "${workingDir}"`);
         const composeFileName = this.getComposeFile(workingDir) || "docker-compose.yml";
-        term.sendText(`docker-compose up`);
+        term.sendText(`docker-compose -f <composeFileName> up`);
         await this.saveRanProject("dockerCompose", workingDir);
     }
 }

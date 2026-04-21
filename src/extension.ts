@@ -16,22 +16,21 @@ import { SessionKeyDefinitionProvider } from './navigation/sessionKeyDefinitionP
 import { MasterRenameProvider } from './rename/masterRenameProvider';
 import { FrankRenameHintProvider } from './rename/frankRenameHintProvider';
 import { PipeReferenceProvider } from './references/pipeReferenceProvider';
+import { showCreateFrankView } from './start/create-frank-view';
 
-let targets: any = null;
+let targets: Record<string, Record<string, string[]>> = {};
 let projectNameTrimmed = "skeleton";
 let configNameTrimmed = "";
 
 export async function activate(context: vscode.ExtensionContext) {
     console.log('Activating WeAreFrank! Extension...');
     
-    // Initialize the global workspace index for cross-file validation
     const configurationIndex = new ConfigurationIndex();
     await configurationIndex.buildIndex();
 
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
     context.subscriptions.push(diagnosticCollection);
     
-    // Inject the index into the validator
     const frankValidator = new FrankValidator(diagnosticCollection, configurationIndex);
     
     const snippetsService = new SnippetsService(context);
@@ -48,6 +47,37 @@ export async function activate(context: vscode.ExtensionContext) {
     const sessionKeyProvider = new SessionKeyDefinitionProvider();
     const frankRenameHintProvider = new FrankRenameHintProvider();
     const pipeReferenceProvider = new PipeReferenceProvider();
+
+    let validationTimeout: NodeJS.Timeout | undefined;
+    let validationCancellationTokenSource: vscode.CancellationTokenSource | undefined;
+
+    const triggerValidation = (document: vscode.TextDocument) => {
+        if (document.languageId !== 'xml') return;
+
+        // Clear existing timeout
+        if (validationTimeout) {
+            clearTimeout(validationTimeout);
+        }
+
+        // Cancel previous validation execution
+        if (validationCancellationTokenSource) {
+            validationCancellationTokenSource.cancel();
+            validationCancellationTokenSource.dispose();
+        }
+
+        // Create a new cancellation token for this typing pass
+        validationCancellationTokenSource = new vscode.CancellationTokenSource();
+        const token = validationCancellationTokenSource.token;
+
+        // Debounce for 300ms
+        validationTimeout = setTimeout(async () => {
+            try {
+                await frankValidator.validate(document, token);
+            } catch (err) {
+                console.error("FrankValidator failed:", err);
+            }
+        }, 300);
+    };
 
     // Register hints
     frankRenameHintProvider.register(context);
@@ -76,9 +106,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 await configurationIndex.updateFile(doc.uri);
                 
                 vscode.workspace.textDocuments.forEach(openDoc => {
-                    if (openDoc.languageId === 'xml') {
-                        frankValidator.validate(openDoc);
-                    }
+                    triggerValidation(openDoc);
                 });
 
                 flowViewProvider.updateWebview();
@@ -90,7 +118,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
 
         vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document.languageId === 'xml') frankValidator.validate(e.document);
+            triggerValidation(e.document);
         }),
         
         vscode.workspace.onDidCloseTextDocument(doc => frankValidator.clear(doc)),
@@ -100,6 +128,19 @@ export async function activate(context: vscode.ExtensionContext) {
             flowViewProvider.updateWebview();
         })
     );
+
+    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'xml') {
+        triggerValidation(vscode.window.activeTextEditor.document);
+    }
+
+    // Load components.json once — used by the document link provider
+    try {
+        const componentsPath = context.asAbsolutePath('./resources/components.json');
+        const components = fs.readFileSync(componentsPath, 'utf8');
+        targets = JSON.parse(components);
+    } catch (err) {
+        console.error("Failed to load components.json:", err);
+    }
 
     vscode.commands.registerCommand('frank.createNewFrank', async function () {
         const items = [
@@ -113,41 +154,12 @@ export async function activate(context: vscode.ExtensionContext) {
         
         const projectType = await vscode.window.showQuickPick(items as vscode.QuickPickItem[], {placeHolder: "Pick a project"});
         
-        if (projectType && projectType.description) {
+        if (projectType?.label === "Simple Frank") {
+            showCreateFrankView(context, 'simple');
+        } else if (projectType?.label === "Skeleton") {
+            showCreateFrankView(context, 'skeleton');
+        } else if (projectType && projectType.description) {
             vscode.env.openExternal(vscode.Uri.parse(projectType.description));
-        } else if (projectType?.label === "Simple Frank") {
-            const projectName = await vscode.window.showInputBox({
-                placeHolder: 'Give your project a name',
-                validateInput: (value) => (!value || value.trim() === '') ? 'Name cannot be empty' : null
-            });
-            if (!projectName) return;
-            projectNameTrimmed = projectName.trim();
-
-            const configName = await vscode.window.showInputBox({
-                placeHolder: 'Give your configuration a name',
-                validateInput: (value) => (!value || value.trim() === '') ? 'Name cannot be empty' : null
-            });
-            if (!configName) return;
-            configNameTrimmed = configName.trim();
-
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (!workspaceFolders || workspaceFolders.length === 0) {
-                vscode.window.showErrorMessage('No workspace folder open');
-                return;
-            }
-            const rootPath = workspaceFolders[0].uri.fsPath;
-
-            if (!fs.existsSync(path.join(rootPath, "frank-runner"))) {
-                await execAsync('git clone https://github.com/wearefrank/frank-runner.git', rootPath);
-            }
-
-            const simpleFrankPath = vscode.Uri.file(path.join(context.extensionPath, 'resources/simpleFrank/projectName'));
-            const targetDir = vscode.Uri.file(path.join(rootPath, projectNameTrimmed));
-
-            await copyDir(simpleFrankPath, targetDir);
-
-            vscode.window.showTextDocument(vscode.Uri.file(path.join(rootPath, projectNameTrimmed, 'configurations', configNameTrimmed, 'Configuration.xml')));
-            vscode.env.openExternal(vscode.Uri.parse("https://github.com/wearefrank/frank-runner?tab=readme-ov-file#project-structure-and-customisation"));
         }
     });
 
@@ -220,7 +232,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage("Snippet added!");
     });
 
-    async function copyDir(source: vscode.Uri, target: vscode.Uri) {
+    async function copyDir(source: vscode.Uri, target: vscode.Uri): Promise<void> {
         await vscode.workspace.fs.createDirectory(target);
         const entries = await vscode.workspace.fs.readDirectory(source);
 
@@ -243,7 +255,7 @@ export async function activate(context: vscode.ExtensionContext) {
         startTreeView.description = project ? path.basename(project) : "No Project Open in Editor/No Runable File Found";
     }
 
-    async function startHandler(item: any, isCurrent: boolean) {
+    async function startHandler(item: { method: 'ant' | 'dockerCompose'; path: string }, isCurrent: boolean): Promise<void> {
         const editor = vscode.window.activeTextEditor;
         if (editor && editor.document.languageId === 'xml') {
             frankValidator.validate(editor.document);
@@ -276,16 +288,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.languages.registerDocumentLinkProvider({ language: 'xml', scheme: 'file' }, {
         provideDocumentLinks(document, token) {
-            const links = [];
+            const links: vscode.DocumentLink[] = [];
             const text = document.getText();
             const regex = /\w+/g;
             let match;
 
-            const componentsPath = context.asAbsolutePath('./resources/components.json');
-            const components = fs.readFileSync(componentsPath, 'utf8');
-            targets = JSON.parse(components);
-
             while ((match = regex.exec(text)) !== null) {
+                if (token.isCancellationRequested) break;
+
                 targetLoop: for (const i in targets) {
                     for (const j in targets[i]) {
                         if (targets[i][j].includes(match[0])) {
