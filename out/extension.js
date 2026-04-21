@@ -117,11 +117,14 @@ async function activate(context) {
             { label: 'Foks Monorepo', description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#foks-monorepo' }
         ];
         const projectType = await vscode.window.showQuickPick(items, { placeHolder: "Pick a project" });
-        if (projectType && projectType.description) {
-            vscode.env.openExternal(vscode.Uri.parse(projectType.description));
+        if (projectType?.label === "Simple Frank") {
+            (0, create_frank_view_1.showCreateFrankView)(context, 'simple');
         }
-        else if (projectType?.label === "Simple Frank") {
-            (0, create_frank_view_1.showCreateFrankView)(context);
+        else if (projectType?.label === "Skeleton") {
+            (0, create_frank_view_1.showCreateFrankView)(context, 'skeleton');
+        }
+        else if (projectType && projectType.description) {
+            vscode.env.openExternal(vscode.Uri.parse(projectType.description));
         }
     });
     vscode.commands.registerCommand("frank.openWalkthrough", () => {

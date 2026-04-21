@@ -154,10 +154,12 @@ export async function activate(context: vscode.ExtensionContext) {
         
         const projectType = await vscode.window.showQuickPick(items as vscode.QuickPickItem[], {placeHolder: "Pick a project"});
         
-        if (projectType && projectType.description) {
+        if (projectType?.label === "Simple Frank") {
+            showCreateFrankView(context, 'simple');
+        } else if (projectType?.label === "Skeleton") {
+            showCreateFrankView(context, 'skeleton');
+        } else if (projectType && projectType.description) {
             vscode.env.openExternal(vscode.Uri.parse(projectType.description));
-        } else if (projectType?.label === "Simple Frank") {
-            showCreateFrankView(context);
         }
     });
 
