@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 
 class StartService {
     context: vscode.ExtensionContext;
@@ -304,6 +305,15 @@ class StartService {
         return false;
     }
 
+    private isDockerAvailable(): boolean {
+        try {
+            execSync('docker --version', { stdio: 'ignore' });
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     async startWithAnt(workingDir: string | null | undefined, isCurrent: boolean) {
         if (isCurrent) {
             workingDir = await this.getAntWorkingDirectory();
@@ -320,13 +330,23 @@ class StartService {
             return;
         }
 
+        // STEP 1: Verify the ant launch script exists before opening a terminal
+        const antScript = process.platform === 'win32' ? 'ant.bat' : 'ant';
+        const antScriptPath = path.join(runnerPath, antScript);
+        if (!fs.existsSync(antScriptPath)) {
+            vscode.window.showErrorMessage(`frank-runner found but '${antScript}' is missing. Ensure frank-runner is fully set up at: ${runnerPath}`);
+            return;
+        }
+
+        // STEP 2: Launch
         const term = vscode.window.createTerminal("Frank Ant");
         term.show();
-
         term.sendText(`cd "${workingDir}"`);
-
-        const antBatPath = path.join(runnerPath, "ant.bat");
-        term.sendText(`& "${antBatPath}"`);
+        if (process.platform === 'win32') {
+            term.sendText(`& "${antScriptPath}"`);
+        } else {
+            term.sendText(`bash "${antScriptPath}"`);
+        }
     }
 
     async startWithDockerCompose(workingDir: string | null | undefined, isCurrent: boolean) {
@@ -339,7 +359,13 @@ class StartService {
             return;
         }
 
-        // STEP 1: Find or generate docker-compose.yml at the project root
+        // STEP 1: Verify Docker is installed and reachable
+        if (!this.isDockerAvailable()) {
+            vscode.window.showErrorMessage("Docker is not available. Ensure Docker Desktop is installed and running.");
+            return;
+        }
+
+        // STEP 2: Find or generate docker-compose.yml at the project root
         let composeFileName = this.getComposeFile(workingDir);
         if (!composeFileName) {
             const choice = await vscode.window.showInformationMessage(
@@ -353,7 +379,7 @@ class StartService {
             composeFileName = "docker-compose.yml";
         }
 
-        // STEP 2: Launch docker-compose from the project root
+        // STEP 3: Launch docker-compose from the project root
         const term = vscode.window.createTerminal('Frank! Docker Compose');
         term.show();
         term.sendText(`cd "${workingDir}"`);
