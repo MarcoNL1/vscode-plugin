@@ -201,7 +201,7 @@ class StartService {
     }
     getLocalFFVersions(workingDir) {
         let downloadDir;
-        if (workingDir.includes("frank-runner\\examples")) {
+        if (workingDir.includes(`frank-runner${path.sep}examples`)) {
             downloadDir = path.join(workingDir, "../../download");
         }
         else {
