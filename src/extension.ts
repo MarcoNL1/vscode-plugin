@@ -32,20 +32,20 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('frank-framework');
     context.subscriptions.push(diagnosticCollection);
-    
+
     const frankValidator = new FrankValidator(diagnosticCollection, configurationIndex);
-    
+
     const snippetsService = new SnippetsService(context);
     const snippetsTreeProvider = new SnippetsTreeProvider(snippetsService);
     const snippetsDndController = new SnippetsDndController(context, snippetsTreeProvider, snippetsService);
-    
+
     const startService = new StartService(context);
     const startTreeProvider = new StartTreeProvider(context, startService);
-    
+
     const flowViewProvider = new FlowViewProvider(context);
 
     const documentSelector: vscode.DocumentSelector = { language: 'xml', scheme: 'file' };
-    
+
     const sessionKeyProvider = new SessionKeyDefinitionProvider();
     const frankRenameHintProvider = new FrankRenameHintProvider();
     const pipeReferenceProvider = new PipeReferenceProvider();
@@ -110,7 +110,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Init snippets view
     if (config.get('enableSnippets')) {
-            vscode.window.createTreeView("snippetsTreeView", {
+        vscode.window.createTreeView("snippetsTreeView", {
             treeDataProvider: snippetsTreeProvider,
             dragAndDropController: snippetsDndController
         });
@@ -186,7 +186,7 @@ export async function activate(context: vscode.ExtensionContext) {
             { label: 'Monorepo', description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#module-per-config-flattened-aka-monorepo' },
             { label: 'Foks Monorepo', description: 'https://github.com/wearefrank/frank-runner?tab=readme-ov-file#foks-monorepo' }
         ];
-        
+
         const projectType = await vscode.window.showQuickPick(items as vscode.QuickPickItem[], {placeHolder: "Pick a project"});
         
         if (projectType?.label === "Simple Frank") {
@@ -202,19 +202,19 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand("workbench.action.openWalkthrough", "wearefrank.wearefrank#introduction", false);
     });
 
-    vscode.commands.registerCommand("frank.startCurrent", async function (item) { 
+    vscode.commands.registerCommand("frank.startCurrent", async function (item) {
         await startHandler(item, true);
         startTreeProvider.rebuild();
         startTreeProvider.refresh();
     });
 
-    vscode.commands.registerCommand("frank.startProject", async function (item) { 
+    vscode.commands.registerCommand("frank.startProject", async function (item) {
         await startHandler(item, false);
         startTreeProvider.rebuild();
         startTreeProvider.refresh();
     });
 
-    vscode.commands.registerCommand("frank.deleteProject", async function (item) { 
+    vscode.commands.registerCommand("frank.deleteProject", async function (item) {
         await startService.deleteRanProject(item.method, item.path);
         startTreeProvider.rebuild();
         startTreeProvider.refresh();
@@ -323,30 +323,32 @@ export async function activate(context: vscode.ExtensionContext) {
         });
     }
 
-    if (config.get('enableDocumentLinks')) { context.subscriptions.push(vscode.languages.registerDocumentLinkProvider({ language: 'xml', scheme: 'file' }, {
-        provideDocumentLinks(document, token) {
-            const links: vscode.DocumentLink[] = [];
-            const text = document.getText();
-            const regex = /\w+/g;
-            let match;
+    if (config.get('enableDocumentLinks')) {
+        context.subscriptions.push(vscode.languages.registerDocumentLinkProvider({ language: 'xml', scheme: 'file' }, {
+            provideDocumentLinks(document, token) {
+                const links: vscode.DocumentLink[] = [];
+                const text = document.getText();
+                const regex = /\w+/g;
+                let match;
 
-            while ((match = regex.exec(text)) !== null) {
-                if (token.isCancellationRequested) break;
+                while ((match = regex.exec(text)) !== null) {
+                    if (token.isCancellationRequested) break;
 
-                targetLoop: for (const i in targets) {
-                    for (const j in targets[i]) {
-                        if (targets[i][j].includes(match[0])) {
-                            const start = document.positionAt(match.index);
-                            const end = document.positionAt(match.index + match[0].length);
-                            links.push(new vscode.DocumentLink(new vscode.Range(start, end), vscode.Uri.parse(`https://frankdoc.frankframework.org/#/${i}/${j}/${match[0]}`)));
-                            break targetLoop;
+                    targetLoop: for (const i in targets) {
+                        for (const j in targets[i]) {
+                            if (targets[i][j].includes(match[0])) {
+                                const start = document.positionAt(match.index);
+                                const end = document.positionAt(match.index + match[0].length);
+                                links.push(new vscode.DocumentLink(new vscode.Range(start, end), vscode.Uri.parse(`https://frankdoc.frankframework.org/#/${i}/${j}/${match[0]}`)));
+                                break targetLoop;
+                            }
                         }
                     }
                 }
+                return links;
             }
-            return links;
-        }
-    })); }
+        }));
+    }
 
     // Execute Startup Actions
     setStartTreeViewDescription();
@@ -359,7 +361,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     if (config.get('enableValidation') && vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'xml') {
-        frankValidator.validate(vscode.window.activeTextEditor.document);
+        triggerValidation(vscode.window.activeTextEditor.document);
     }
 }
 
