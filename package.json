@@ -176,11 +176,6 @@
           "command": "frank.toggleUpdate",
           "when": "view == startTreeView && (viewItem == projectTreeItem-ant || viewItem == startTreeItem-ant)",
           "group": "navigation"
-        },
-        {
-          "command": "frank.deleteProject",
-          "when": "view == startTreeView && (viewItem == projectTreeItem-ant ||  viewItem == projectTreeItem-dockerCompose)",
-          "group": "inline@2"
         }
       ]
     },
@@ -229,11 +224,6 @@
         "command": "frank.toggleUpdate",
         "title": "Change FF! Version",
         "icon": "$(sync)"
-      },
-      {
-        "command": "frank.deleteProject",
-        "title": "Delete From List",
-        "icon": "$(trash)"
       }
     ],
     "viewsContainers": {
