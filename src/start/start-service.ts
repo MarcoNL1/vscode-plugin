@@ -305,6 +305,34 @@ class StartService {
         return false;
     }
 
+    ensureRanProjectsFileExists(): void {
+        const storageDir = this.context.globalStorageUri.fsPath;
+        const ranProjectsPath = path.join(storageDir, 'ranProjects.json');
+        const ranProjectsBody = { ant: [], docker: [], dockerCompose: [] };
+        if (!fs.existsSync(storageDir)) {
+            fs.mkdirSync(storageDir, { recursive: true });
+        }
+        if (!fs.existsSync(ranProjectsPath)) {
+            fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectsBody, null, 4), 'utf8');
+        }
+    }
+
+    async deleteRanProject(method: string, workingDir: string): Promise<void> {
+        const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
+        const ranProjectsJSON = JSON.parse(fs.readFileSync(ranProjectsPath, 'utf8'));
+        ranProjectsJSON[method] = ranProjectsJSON[method].filter((p: { path: string }) => p.path !== workingDir);
+        fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectsJSON, null, 4), 'utf8');
+    }
+
+    async saveRanProject(method: string, workingDir: string): Promise<void> {
+        const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
+        const ranProjectsJSON = JSON.parse(fs.readFileSync(ranProjectsPath, 'utf8'));
+        const alreadyExists = ranProjectsJSON[method].some((p: { path: string }) => p.path === workingDir);
+        if (alreadyExists) return;
+        ranProjectsJSON[method].push({ project: path.basename(workingDir), path: workingDir });
+        fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectsJSON, null, 4), 'utf8');
+    }
+
     private isDockerAvailable(): boolean {
         try {
             execSync('docker --version', { stdio: 'ignore' });

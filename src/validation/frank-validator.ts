@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { DOMParser } from '@xmldom/xmldom';
 import { ConfigurationIndex } from './configuration-index';
 import { ExpressionValidator } from './expressionValidator';
@@ -11,11 +12,17 @@ export class FrankValidator {
     private diagnosticCollection: vscode.DiagnosticCollection;
     private index: ConfigurationIndex;
     private expressionValidator: ExpressionValidator;
+    private fileExistsFn: (uri: vscode.Uri) => Promise<void>;
 
-    constructor(collection: vscode.DiagnosticCollection, index: ConfigurationIndex) {
+    constructor(
+        collection: vscode.DiagnosticCollection,
+        index: ConfigurationIndex,
+        fileExistsFn: (uri: vscode.Uri) => Promise<void> = async (uri) => { await vscode.workspace.fs.stat(uri); }
+    ) {
         this.diagnosticCollection = collection;
         this.index = index;
         this.expressionValidator = new ExpressionValidator();
+        this.fileExistsFn = fileExistsFn;
     }
 
     public async validate(document: vscode.TextDocument, token?: vscode.CancellationToken) {
@@ -42,8 +49,9 @@ export class FrankValidator {
         this.validatePipelines(xmlDoc, document, diagnostics);
         this.validateLocalSenders(xmlDoc, document, diagnostics);
         
-        // 2. Await the asynchronous expression validation
+        // 2. Await the asynchronous expression and schema reference validation
         await this.validateExpressions(xmlDoc, document, diagnostics, token);
+        await this.validateSchemaReferences(xmlDoc, document, diagnostics, token);
 
         // 3. Final check before committing diagnostics to the UI
         if (token?.isCancellationRequested) return;
@@ -52,35 +60,101 @@ export class FrankValidator {
     }
 
     private async validateExpressions(xmlDoc: Document, document: vscode.TextDocument, diagnostics: vscode.Diagnostic[], token?: vscode.CancellationToken) {
+        const cts = token ? null : new vscode.CancellationTokenSource();
+        const actualToken = token ?? cts!.token;
+
+        try {
+            const elements = xmlDoc.getElementsByTagName('*');
+            const attributesToCheck = ['jsonPath', 'jsonPathExpression', 'xpathExpression', 'elementXPathExpression'];
+
+            for (let i = 0; i < elements.length; i++) {
+                const el = elements[i];
+
+                for (const attrName of attributesToCheck) {
+                    const attrValue = el.getAttribute(attrName);
+                    if (attrValue) {
+                        if (actualToken.isCancellationRequested) return;
+
+                        const elementLineNumber = (el as unknown as LocatableNode).lineNumber - 1;
+                        if (elementLineNumber < 0 || elementLineNumber >= document.lineCount) continue;
+
+                        const searchStringDouble = `${attrName}="${attrValue}"`;
+                        const searchStringSingle = `${attrName}='${attrValue}'`;
+                        const QUOTE_OFFSET = attrName.length + 2;
+
+                        let startIndex = -1;
+                        let attrLineNumber = elementLineNumber;
+                        for (let offset = 0; offset <= 10; offset++) {
+                            const searchLine = elementLineNumber + offset;
+                            if (searchLine >= document.lineCount) break;
+                            const text = document.lineAt(searchLine).text;
+                            startIndex = text.indexOf(searchStringDouble);
+                            if (startIndex === -1) startIndex = text.indexOf(searchStringSingle);
+                            if (startIndex !== -1) { attrLineNumber = searchLine; break; }
+                        }
+
+                        const lineText = document.lineAt(attrLineNumber).text;
+                        const startCharacter = startIndex !== -1 ? startIndex + QUOTE_OFFSET : 0;
+                        const endCharacter = startIndex !== -1 ? startIndex + QUOTE_OFFSET + attrValue.length : lineText.length;
+
+                        const range = new vscode.Range(attrLineNumber, startCharacter, attrLineNumber, endCharacter);
+
+                        const diagnostic = await this.expressionValidator.checkExpression(attrName, attrValue, range, actualToken);
+                        if (diagnostic) {
+                            diagnostics.push(diagnostic);
+                        }
+                    }
+                }
+            }
+        } finally {
+            cts?.dispose();
+        }
+    }
+
+    private async validateSchemaReferences(xmlDoc: Document, document: vscode.TextDocument, diagnostics: vscode.Diagnostic[], token?: vscode.CancellationToken) {
+        const dir = path.dirname(document.uri.fsPath);
         const elements = xmlDoc.getElementsByTagName('*');
-        const attributesToCheck = ['jsonPath', 'xpathExpression'];
 
         for (let i = 0; i < elements.length; i++) {
             const el = elements[i];
-            
-            for (const attrName of attributesToCheck) {
-                const attrValue = el.getAttribute(attrName);
-                if (attrValue) {
-                    if (token?.isCancellationRequested) return;
+            const schemaValue = el.getAttribute('schema');
+            if (!schemaValue) continue;
+            if (token?.isCancellationRequested) return;
 
-                    const lineNumber = (el as unknown as LocatableNode).lineNumber - 1;
-                    if (lineNumber < 0 || lineNumber >= document.lineCount) continue;
+            const schemaUri = vscode.Uri.file(path.join(dir, schemaValue));
 
-                    const lineText = document.lineAt(lineNumber).text;
-                    const startIndex = lineText.indexOf(attrValue);
-                    
-                    const startCharacter = startIndex !== -1 ? startIndex : 0;
-                    const endCharacter = startIndex !== -1 ? startIndex + attrValue.length : lineText.length;
-                    
-                    const range = new vscode.Range(lineNumber, startCharacter, lineNumber, endCharacter);
-                    
-                    const actualToken = token ?? new vscode.CancellationTokenSource().token;
-                    
-                    const diagnostic = await this.expressionValidator.checkExpression(attrName, attrValue, range, actualToken);
-                    if (diagnostic) {
-                        diagnostics.push(diagnostic);
-                    }
+            try {
+                await this.fileExistsFn(schemaUri);
+            } catch {
+                const elementLineNumber = (el as unknown as LocatableNode).lineNumber - 1;
+                if (elementLineNumber < 0 || elementLineNumber >= document.lineCount) continue;
+
+                const searchStringDouble = `schema="${schemaValue}"`;
+                const searchStringSingle = `schema='${schemaValue}'`;
+                const QUOTE_OFFSET = 'schema'.length + 2;
+
+                let startIndex = -1;
+                let attrLineNumber = elementLineNumber;
+                for (let offset = 0; offset <= 10; offset++) {
+                    const searchLine = elementLineNumber + offset;
+                    if (searchLine >= document.lineCount) break;
+                    const text = document.lineAt(searchLine).text;
+                    startIndex = text.indexOf(searchStringDouble);
+                    if (startIndex === -1) startIndex = text.indexOf(searchStringSingle);
+                    if (startIndex !== -1) { attrLineNumber = searchLine; break; }
                 }
+
+                const lineText = document.lineAt(attrLineNumber).text;
+                const startCharacter = startIndex !== -1 ? startIndex + QUOTE_OFFSET : 0;
+                const endCharacter = startIndex !== -1 ? startIndex + QUOTE_OFFSET + schemaValue.length : lineText.length;
+
+                const diagnostic = new vscode.Diagnostic(
+                    new vscode.Range(attrLineNumber, startCharacter, attrLineNumber, endCharacter),
+                    `Schema file not found: ${schemaValue}`,
+                    vscode.DiagnosticSeverity.Error
+                );
+                diagnostic.source = 'Frank!Validator';
+                diagnostics.push(diagnostic);
             }
         }
     }
