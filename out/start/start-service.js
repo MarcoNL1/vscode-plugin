@@ -3,9 +3,43 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
+const child_process_1 = require("child_process");
 class StartService {
     constructor(context) {
         this.context = context;
+    }
+    async discoverAntProjects() {
+        const buildFiles = await vscode.workspace.findFiles('**/build.xml', '**/node_modules/**');
+        return buildFiles.map(uri => path.dirname(uri.fsPath));
+    }
+    async discoverDockerProjects() {
+        const [mavenFiles, simpleFiles] = await Promise.all([
+            vscode.workspace.findFiles('**/src/main/configurations/**', '**/node_modules/**'),
+            vscode.workspace.findFiles('**/configurations/*/Configuration.xml', '**/node_modules/**'),
+        ]);
+        const projectRoots = new Set();
+        const mavenMarker = `${path.sep}src${path.sep}main${path.sep}configurations`;
+        for (const file of mavenFiles) {
+            const idx = file.fsPath.indexOf(mavenMarker);
+            if (idx !== -1)
+                projectRoots.add(file.fsPath.substring(0, idx));
+        }
+        const simpleMarker = `${path.sep}configurations${path.sep}`;
+        for (const file of simpleFiles) {
+            const idx = file.fsPath.indexOf(simpleMarker);
+            if (idx !== -1)
+                projectRoots.add(file.fsPath.substring(0, idx));
+        }
+        return Array.from(projectRoots);
+    }
+    detectConfigurationsDir(projectRoot) {
+        const candidates = ['src/main/configurations', 'configurations'];
+        for (const candidate of candidates) {
+            if (fs.existsSync(path.join(projectRoot, candidate))) {
+                return candidate;
+            }
+        }
+        return candidates[0];
     }
     async getFrankRunnerPath(workingDir) {
         let currentDir = workingDir;
@@ -28,114 +62,62 @@ class StartService {
         }
         return null;
     }
-    ensureRanProjectsFileExists() {
-        const storageDir = this.context.globalStorageUri.fsPath;
-        const ranProjectsPath = path.join(storageDir, 'ranProjects.json');
-        const ranProjectsBody = {
-            "ant": [],
-            "dockerCompose": []
-        };
-        if (!fs.existsSync(storageDir)) {
-            fs.mkdirSync(storageDir, { recursive: true });
-        }
-        if (!fs.existsSync(ranProjectsPath)) {
-            fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectsBody, null, 4), "utf8");
-        }
-    }
-    async promptForConfigurationFolder() {
-        // Find all Configuration.xml files in the workspace
-        const configFiles = await vscode.workspace.findFiles('**/Configuration.xml', '**/node_modules/**');
-        if (configFiles.length === 0) {
-            vscode.window.showErrorMessage("No Frank! configurations found in the workspace.");
-            return undefined;
-        }
-        const quickPickItems = configFiles.map(uri => {
-            const dirPath = path.dirname(uri.fsPath);
-            return {
-                label: path.basename(dirPath),
-                description: vscode.workspace.asRelativePath(dirPath),
-                detail: dirPath
-            };
-        });
-        const selected = await vscode.window.showQuickPick(quickPickItems, {
-            placeHolder: "Select the configuration to run with Docker Compose"
-        });
-        return selected ? selected.detail : undefined;
-    }
     async createFile(targetDir, file) {
         const newFilePath = path.join(targetDir, file);
         const defaultFilePath = path.join(this.context.extensionPath, 'resources', file);
-        let newFileContent = fs.readFileSync(defaultFilePath, 'utf8');
-        if (file === "docker-compose.yml") {
-            const configName = path.basename(targetDir);
-            newFileContent = newFileContent.replace(/\{\{CONFIG_NAME\}\}/g, configName);
+        let content = fs.readFileSync(defaultFilePath, 'utf8');
+        if (file === 'docker-compose.yml') {
+            const configsDir = this.detectConfigurationsDir(targetDir);
+            content = content.replace('{{CONFIGURATIONS_DIR}}', `./${configsDir}`);
         }
-        fs.writeFileSync(newFilePath, newFileContent, "utf8");
+        fs.writeFileSync(newFilePath, content, 'utf8');
         return true;
     }
-    async getWorkingDirectory(file) {
+    // Walks up from the active editor looking for a project root containing build.xml (Ant).
+    async getAntWorkingDirectory() {
         const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            let currentDir = path.dirname(editor.document.uri.fsPath);
-            while (true) {
-                if (file && fs.existsSync(path.join(currentDir, file))) {
-                    return currentDir;
-                }
-                if (!file && (fs.existsSync(path.join(currentDir, "build.xml")) || fs.existsSync(path.join(currentDir, "Dockerfile")) || this.getComposeFile(currentDir))) {
-                    return currentDir;
-                }
-                const parentDir = path.dirname(currentDir);
-                if (parentDir === currentDir)
-                    break;
-                currentDir = parentDir;
-            }
-        }
-        if (file === "docker-compose.yml") {
-            const choice = await vscode.window.showInformationMessage(`No ${file} found in the immediate context. Would you like to generate one for a specific configuration?`, 'Yes', 'Cancel');
-            if (choice === 'Yes') {
-                const targetDir = await this.promptForConfigurationFolder();
-                if (targetDir) {
-                    const createdFile = await this.createFile(targetDir, file);
-                    return createdFile ? targetDir : null;
-                }
-            }
+        if (!editor)
             return null;
+        let currentDir = path.dirname(editor.document.uri.fsPath);
+        while (true) {
+            if (fs.existsSync(path.join(currentDir, 'build.xml'))) {
+                return currentDir;
+            }
+            const parentDir = path.dirname(currentDir);
+            if (parentDir === currentDir)
+                break;
+            currentDir = parentDir;
         }
-        return undefined;
+        return null;
+    }
+    // Walks up from the active editor looking for a project root containing a known configurations folder.
+    async getDockerWorkingDirectory() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor)
+            return null;
+        let currentDir = path.dirname(editor.document.uri.fsPath);
+        while (true) {
+            if (fs.existsSync(path.join(currentDir, 'src', 'main', 'configurations')) ||
+                fs.existsSync(path.join(currentDir, 'configurations'))) {
+                return currentDir;
+            }
+            const parentDir = path.dirname(currentDir);
+            if (parentDir === currentDir)
+                break;
+            currentDir = parentDir;
+        }
+        return null;
+    }
+    // Used by extension.ts for the tree view description label (Ant project from active editor).
+    async getWorkingDirectory() {
+        return this.getAntWorkingDirectory();
     }
     getComposeFile(dir) {
         const isComposeFile = (filename) => filename.toLowerCase().includes("compose") &&
             (filename.endsWith(".yml") || filename.endsWith(".yaml"));
         const files = fs.readdirSync(dir);
         const composeFile = files.find(isComposeFile);
-        if (composeFile) {
-            return composeFile;
-        }
-        return null;
-    }
-    async deleteRanProject(method, workingDir) {
-        const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
-        const ranProjectsFile = await fs.readFileSync(ranProjectsPath, 'utf8');
-        let ranProjectsJSON = JSON.parse(ranProjectsFile);
-        ranProjectsJSON[method] = ranProjectsJSON[method].filter((project) => project.path !== workingDir);
-        fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectsJSON, null, 4), 'utf8');
-    }
-    async saveRanProject(method, workingDir) {
-        const ranProjectsPath = path.join(this.context.globalStorageUri.fsPath, 'ranProjects.json');
-        const ranProjects = fs.readFileSync(ranProjectsPath, 'utf8');
-        let ranProjectJSON = JSON.parse(ranProjects);
-        if (ranProjectJSON[method].length > 0) {
-            const alreadyExists = ranProjectJSON[method].some((project) => project.path === workingDir);
-            if (alreadyExists) {
-                return;
-            }
-        }
-        const newRanProjectBody = {
-            project: path.basename(workingDir),
-            path: workingDir
-        };
-        ranProjectJSON[method].push(newRanProjectBody);
-        fs.writeFileSync(ranProjectsPath, JSON.stringify(ranProjectJSON, null, 4), "utf8");
+        return composeFile ?? null;
     }
     isFrameworkFile(file) {
         if (file.startsWith('frankframework-webapp')) {
@@ -219,7 +201,7 @@ class StartService {
     }
     getLocalFFVersions(workingDir) {
         let downloadDir;
-        if (workingDir.includes("frank-runner\\examples")) {
+        if (workingDir.includes(`frank-runner${path.sep}examples`)) {
             downloadDir = path.join(workingDir, "../../download");
         }
         else {
@@ -267,11 +249,21 @@ class StartService {
         }
         return false;
     }
+    isDockerAvailable() {
+        try {
+            (0, child_process_1.execSync)('docker --version', { stdio: 'ignore' });
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
     async startWithAnt(workingDir, isCurrent) {
         if (isCurrent) {
-            workingDir = await this.getWorkingDirectory("build.xml");
+            workingDir = await this.getAntWorkingDirectory();
         }
         if (!workingDir) {
+            vscode.window.showErrorMessage("No Frank project found. Open a file inside a Frank project (containing build.xml).");
             return;
         }
         const runnerPath = await this.getFrankRunnerPath(workingDir);
@@ -279,26 +271,51 @@ class StartService {
             vscode.window.showErrorMessage("Could not locate the frank-runner directory. Ensure it is cloned or added to your workspace.");
             return;
         }
+        // STEP 1: Verify the ant launch script exists before opening a terminal
+        const antScript = process.platform === 'win32' ? 'ant.bat' : 'ant';
+        const antScriptPath = path.join(runnerPath, antScript);
+        if (!fs.existsSync(antScriptPath)) {
+            vscode.window.showErrorMessage(`frank-runner found but '${antScript}' is missing. Ensure frank-runner is fully set up at: ${runnerPath}`);
+            return;
+        }
+        // STEP 2: Launch
         const term = vscode.window.createTerminal("Frank Ant");
         term.show();
         term.sendText(`cd "${workingDir}"`);
-        const antBatPath = path.join(runnerPath, "ant.bat");
-        term.sendText(`& "${antBatPath}"`);
-        await this.saveRanProject("ant", workingDir);
+        if (process.platform === 'win32') {
+            term.sendText(`& "${antScriptPath}"`);
+        }
+        else {
+            term.sendText(`bash "${antScriptPath}"`);
+        }
     }
     async startWithDockerCompose(workingDir, isCurrent) {
         if (isCurrent) {
-            workingDir = await this.getWorkingDirectory("docker-compose.yml");
+            workingDir = await this.getDockerWorkingDirectory();
         }
         if (!workingDir) {
+            vscode.window.showErrorMessage("No Frank project found. Open a file inside a project containing src/main/configurations.");
             return;
         }
+        // STEP 1: Verify Docker is installed and reachable
+        if (!this.isDockerAvailable()) {
+            vscode.window.showErrorMessage("Docker is not available. Ensure Docker Desktop is installed and running.");
+            return;
+        }
+        // STEP 2: Find or generate docker-compose.yml at the project root
+        let composeFileName = this.getComposeFile(workingDir);
+        if (!composeFileName) {
+            const choice = await vscode.window.showInformationMessage("No docker-compose file found in the project root. Would you like to generate one?", 'Yes', 'Cancel');
+            if (choice !== 'Yes')
+                return;
+            await this.createFile(workingDir, "docker-compose.yml");
+            composeFileName = "docker-compose.yml";
+        }
+        // STEP 3: Launch docker-compose from the project root
         const term = vscode.window.createTerminal('Frank! Docker Compose');
         term.show();
         term.sendText(`cd "${workingDir}"`);
-        const composeFileName = this.getComposeFile(workingDir) || "docker-compose.yml";
-        term.sendText(`docker-compose -f <composeFileName> up`);
-        await this.saveRanProject("dockerCompose", workingDir);
+        term.sendText(`docker-compose -f "${composeFileName}" up`);
     }
 }
 exports.default = StartService;

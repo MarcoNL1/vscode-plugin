@@ -5,7 +5,46 @@ const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
 const child_process_1 = require("child_process");
-const CONFIG_SUBFOLDERS = ['xml', 'xsl', 'xsd', 'json', 'jsonschema', 'ds'];
+// Nested subfolder paths created inside each configuration directory
+const CONFIG_SUBFOLDERS = ['XML/XSL', 'XML/XSD', 'JSON/ds', 'JSON/jsonschema'];
+const CONFIGURATION_XML = `<Configuration
+\txmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+\txsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
+\t>
+\t<Adapter name="Adapter1a">
+\t\t<Receiver name="Receiver1a">
+\t\t\t<ApiListener name="Listener1a" uriPattern="service1a"/>
+\t\t</Receiver>
+\t\t<Pipeline>
+\t\t\t<EchoPipe name="HelloWorld" getInputFromFixedValue="Hello World!"/>
+\t\t</Pipeline>
+\t</Adapter>
+</Configuration>`;
+// Boilerplate starter files written into each subfolder when the option is enabled
+const BOILERPLATE_FILES = {
+    'XML/XSL/example.xsl': `<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+\t<xsl:output method="xml" indent="yes"/>
+
+\t<xsl:template match="/">
+\t\t<!-- Transform your XML here -->
+\t</xsl:template>
+</xsl:stylesheet>`,
+    'XML/XSD/example.xsd': `<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+\t<!-- Define your XML schema here -->
+</xs:schema>`,
+    'JSON/ds/example-datasource.json': `{
+\t"name": "example",
+\t"type": "org.h2.jdbcx.JdbcDataSource",
+\t"url": "jdbc:h2:mem:example;NON_KEYWORDS=VALUE;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1;"
+}`,
+    'JSON/jsonschema/example-schema.json': `{
+\t"$schema": "http://json-schema.org/draft-07/schema#",
+\t"type": "object",
+\t"properties": {}
+}`,
+};
 function showCreateFrankView(context, template) {
     const panel = vscode.window.createWebviewPanel('createFrank', 'Create a Frank!', vscode.ViewColumn.One, {
         enableScripts: true,
@@ -31,27 +70,26 @@ function showCreateFrankView(context, template) {
                 break;
             }
             case 'submit': {
-                await handleSubmit(context, panel, message.frankName, message.rootDir, message.configurations, template);
+                await handleSubmit(context, panel, message.frankName, message.rootDir, message.configurations, message.boilerplate, template);
                 break;
             }
         }
     }, null, context.subscriptions);
 }
-async function handleSubmit(context, panel, frankName, rootDir, configurations, template) {
-    const frankNameLower = frankName.toLowerCase();
-    const targetProjectDir = path.join(rootDir, frankNameLower);
+async function handleSubmit(context, panel, frankName, rootDir, configurations, boilerplate, template) {
+    const targetProjectDir = path.join(rootDir, frankName);
     if (fs.existsSync(targetProjectDir)) {
-        panel.webview.postMessage({ command: 'error', message: `Directory '${frankNameLower}' already exists in the selected location.` });
+        panel.webview.postMessage({ command: 'error', message: `Directory '${frankName}' already exists in the selected location.` });
         return;
     }
     if (template === 'skeleton') {
-        await handleSkeletonSubmit(panel, frankNameLower, rootDir, targetProjectDir);
+        await handleSkeletonSubmit(panel, frankName, rootDir, targetProjectDir);
     }
     else {
-        await handleSimpleSubmit(context, panel, frankNameLower, rootDir, targetProjectDir, configurations);
+        await handleSimpleSubmit(context, panel, frankName, rootDir, targetProjectDir, configurations, boilerplate);
     }
 }
-async function handleSimpleSubmit(context, panel, frankNameLower, rootDir, targetProjectDir, configurations) {
+async function handleSimpleSubmit(context, panel, frankName, rootDir, targetProjectDir, configurations, boilerplate) {
     // STEP 1: Clone frank-runner if not present
     try {
         if (!fs.existsSync(path.join(rootDir, 'frank-runner'))) {
@@ -73,14 +111,17 @@ async function handleSimpleSubmit(context, panel, frankNameLower, rootDir, targe
     // STEP 3: Create configurations directory with one folder per config
     const configurationsDir = path.join(targetProjectDir, 'configurations');
     fs.mkdirSync(configurationsDir);
-    const configXmlTemplate = fs.readFileSync(path.join(templateDir, 'configurations', 'configName', 'Configuration.xml'), 'utf8');
     for (const configName of configurations) {
-        const configNameLower = configName.toLowerCase();
-        const configDir = path.join(configurationsDir, configNameLower);
+        const configDir = path.join(configurationsDir, configName);
         fs.mkdirSync(configDir);
-        fs.writeFileSync(path.join(configDir, 'Configuration.xml'), configXmlTemplate);
+        fs.writeFileSync(path.join(configDir, 'Configuration.xml'), CONFIGURATION_XML, 'utf8');
         for (const subfolder of CONFIG_SUBFOLDERS) {
-            fs.mkdirSync(path.join(configDir, subfolder));
+            fs.mkdirSync(path.join(configDir, subfolder), { recursive: true });
+        }
+        if (boilerplate) {
+            for (const [relativePath, content] of Object.entries(BOILERPLATE_FILES)) {
+                fs.writeFileSync(path.join(configDir, relativePath), content, 'utf8');
+            }
         }
     }
     // STEP 4: Add project and frank-runner to workspace
@@ -94,7 +135,7 @@ async function handleSimpleSubmit(context, panel, frankNameLower, rootDir, targe
     });
     const foldersToAdd = [];
     if (!isPathCoveredByWorkspace(targetProjectDirUri.fsPath)) {
-        foldersToAdd.push({ uri: targetProjectDirUri, name: frankNameLower });
+        foldersToAdd.push({ uri: targetProjectDirUri, name: frankName });
     }
     if (!isPathCoveredByWorkspace(frankRunnerDirUri.fsPath)) {
         foldersToAdd.push({ uri: frankRunnerDirUri, name: 'frank-runner' });
@@ -103,7 +144,7 @@ async function handleSimpleSubmit(context, panel, frankNameLower, rootDir, targe
         vscode.workspace.updateWorkspaceFolders(nextIndex, 0, ...foldersToAdd);
     }
     // STEP 5: Open first configuration file and close the panel
-    const firstConfigPath = vscode.Uri.file(path.join(configurationsDir, configurations[0].toLowerCase(), 'Configuration.xml'));
+    const firstConfigPath = vscode.Uri.file(path.join(configurationsDir, configurations[0], 'Configuration.xml'));
     vscode.window.showTextDocument(firstConfigPath);
     panel.dispose();
     vscode.window.showInformationMessage('Frank project created! Check the frank-runner docs for project structure and customisation.', 'Open Docs').then(choice => {
@@ -112,10 +153,10 @@ async function handleSimpleSubmit(context, panel, frankNameLower, rootDir, targe
         }
     });
 }
-async function handleSkeletonSubmit(panel, frankNameLower, rootDir, targetProjectDir) {
+async function handleSkeletonSubmit(panel, frankName, rootDir, targetProjectDir) {
     // STEP 1: Clone the frank-skeleton repo into the target directory
     try {
-        await execAsync(`git clone https://github.com/wearefrank/skeleton.git "${frankNameLower}"`, rootDir);
+        await execAsync(`git clone https://github.com/wearefrank/skeleton.git "${frankName}"`, rootDir);
     }
     catch (error) {
         panel.webview.postMessage({ command: 'error', message: `Failed to clone frank-skeleton: ${error}` });
@@ -135,7 +176,7 @@ async function handleSkeletonSubmit(panel, frankNameLower, rootDir, targetProjec
         return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
     });
     if (!alreadyInWorkspace) {
-        vscode.workspace.updateWorkspaceFolders(nextIndex, 0, { uri: targetProjectDirUri, name: frankNameLower });
+        vscode.workspace.updateWorkspaceFolders(nextIndex, 0, { uri: targetProjectDirUri, name: frankName });
     }
     panel.dispose();
     vscode.window.showInformationMessage('Frank Skeleton project created! Check the skeleton repo for next steps.', 'Open Repo').then(choice => {
@@ -176,7 +217,6 @@ function getWebviewContent(css, template) {
         <div class="form-group">
             <label for="frankName">Frank Name <span class="required">*</span></label>
             <input type="text" id="frankName" placeholder="my-frank-project" autocomplete="off" />
-            <span class="hint">Folder name will be lowercased</span>
         </div>
 
         <div class="form-group">
@@ -189,9 +229,16 @@ function getWebviewContent(css, template) {
 
         <div class="form-group" id="configurations-group"${configurationsHidden}>
             <label>Configurations <span class="required">*</span></label>
-            <span class="hint">Folder names will be lowercased</span>
             <div id="configurations-list"></div>
             <button class="add-button" id="addConfigBtn" type="button">+ Add Configuration</button>
+        </div>
+
+        <div class="form-group"${configurationsHidden}>
+            <label class="checkbox-label">
+                <input type="checkbox" id="boilerplateCheck" />
+                Generate boilerplate files
+            </label>
+            <span class="hint">Creates starter XSL, XSD, datasource, and JSON schema files in each configuration's subfolders</span>
         </div>
 
         <div class="actions">
@@ -262,10 +309,12 @@ function getWebviewContent(css, template) {
             if (!rootDir) { showError('Root Directory is required.'); return; }
             if (!isSkeleton && configurations.length === 0) { showError('At least one configuration name is required.'); return; }
 
+            const boilerplate = document.getElementById('boilerplateCheck').checked;
+
             document.getElementById('createBtn').disabled = true;
             document.getElementById('createBtn').textContent = 'Creating...';
 
-            vscode.postMessage({ command: 'submit', frankName, rootDir, configurations });
+            vscode.postMessage({ command: 'submit', frankName, rootDir, configurations, boilerplate });
         });
 
         window.addEventListener('message', event => {
