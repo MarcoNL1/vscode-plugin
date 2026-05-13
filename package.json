@@ -149,6 +149,11 @@
           "command": "frank.addNewCategoryOfUserSnippets",
           "when": "view == snippetsTreeView",
           "group": "navigation"
+        },
+        {
+          "command": "frank.createNewFrank",
+          "when": "view == startTreeView",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
