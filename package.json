@@ -328,8 +328,10 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && npm run build:webview",
+    "build:webview": "node esbuild.webview.mjs",
     "watch": "tsc -watch -p ./",
+    "watch:webview": "node esbuild.webview.mjs --watch",
     "lint": "eslint .",
     "pretest": "npm run lint",
     "test": "vscode-test"
@@ -338,10 +340,13 @@
     "@types/he": "^1.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.13",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@types/vscode": "^1.109.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.24.0",
     "eslint": "^9.34.0",
     "typescript": "^5.9.3"
   },
@@ -352,6 +357,9 @@
     "he": "^1.2.0",
     "jsdom": "^27.3.0",
     "jsonpath-plus": "^10.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "reactflow": "^11.11.4",
     "saxon-js": "2.5",
     "svg-pan-zoom": "^3.6.2",
     "xml-formatter": "^3.6.7"

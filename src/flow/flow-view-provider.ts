@@ -1,23 +1,63 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import * as SaxonJS from 'saxon-js';
-import * as frankLayout from "@frankframework/frank-config-layout";
 import { JSDOM } from "jsdom";
+import { buildFlowGraph, FlowGraph } from './layout-builder';
+
+interface AdapterGraph {
+    name: string;
+    graph: FlowGraph | null;
+    error: string | null;
+}
+
+type WebviewState =
+    | { kind: 'empty' }
+    | { kind: 'error'; message: string }
+    | { kind: 'graph'; adapters: AdapterGraph[] };
 
 export default class FlowViewProvider {
     context: any;
     webView: any;
+
+    // Cached heavy resources — computed once per extension lifetime
+    private canonicalizeSef: string | null = null;
+    private mermaidSef: string | null = null;
+    private paramsXdm: any = null;
+    private domParser: any = null;
+    private xmlSerializer: any = null;
+
+    private htmlSet = false;
+    private lastState: WebviewState = { kind: 'empty' };
+
     constructor(context: any) {
       this.context = context;
     }
 
     resolveWebviewView(webviewView: any) {
       this.webView = webviewView;
-      this.webView.webview.options = { enableScripts: true };
+      this.webView.webview.options = {
+        enableScripts: true,
+        localResourceRoots: [this.context.extensionUri],
+      };
 
-      (global as any).DOMParser = new JSDOM().window.DOMParser;
-      (global as any).document = new JSDOM().window.document;
+      const jsdomWindow = new JSDOM().window;
+      (global as any).DOMParser = jsdomWindow.DOMParser;
+      (global as any).document = jsdomWindow.document;
+      this.domParser = new jsdomWindow.DOMParser();
+      this.xmlSerializer = new (jsdomWindow as any).XMLSerializer();
+
+      this.htmlSet = false;
+
+      this.webView.webview.onDidReceiveMessage((msg: any) => {
+        if (!msg || typeof msg !== 'object') {
+          return;
+        }
+        if (msg.type === 'ready') {
+          this.postState();
+        } else if (msg.type === 'navigate' && typeof msg.pipeName === 'string') {
+          this.navigateToPipe(msg.pipeName, typeof msg.adapterName === 'string' ? msg.adapterName : undefined);
+        }
+      });
 
       this.updateWebview();
     }
@@ -27,173 +67,219 @@ export default class FlowViewProvider {
         return;
       }
 
-      const editor = vscode.window.activeTextEditor; 
-      
-      if (!editor || editor.document.languageId !== "xml" || editor.document.fileName.endsWith(".xsd")) {
-        this.webView.webview.html = getOpenedWithEmptyEditorWebviewContent();
-        return;
+      if (!this.htmlSet) {
+        this.webView.webview.html = this.getWebviewShellHtml();
+        this.htmlSet = true;
       }
 
-      let config = getCurrentConfiguration();
+      this.lastState = await this.computeState();
+      this.postState();
+    }
 
-      if (!config) {
+    private postState() {
+      if (!this.webView) {
         return;
+      }
+      this.webView.webview.postMessage({ type: 'state', state: this.lastState });
+    }
+
+    private async computeState(): Promise<WebviewState> {
+      const editor = vscode.window.activeTextEditor;
+
+      if (!editor || editor.document.languageId !== "xml" || editor.document.fileName.endsWith(".xsd")) {
+        return { kind: 'empty' };
+      }
+
+      let config = editor.document.getText();
+      if (!config) {
+        return { kind: 'empty' };
       }
 
       const dir = path.dirname(editor.document.fileName);
-
-      // Process local SYSTEM entities to resolve aggregator configurations automatically.
-      // We extract all matches first using matchAll to prevent RegExp state corruption 
-      // caused by modifying the string length during iteration.
-      const entityMatches = [...config.matchAll(/<!ENTITY\s+([\w.-]+)\s+SYSTEM\s+["']([^"']+)["']\s*>/gi)];
-      
-      for (const match of entityMatches) {
-          const entityName = match[1];
-          const relativePath = match[2];
-          try {
-              const entityUri = vscode.Uri.file(path.join(dir, relativePath));
-              const fileData = await vscode.workspace.fs.readFile(entityUri);
-              let entityContent = Buffer.from(fileData).toString('utf8');
-              
-              // Strip XML declarations to prevent invalidating the master document
-              entityContent = entityContent.replace(/<\?xml[^>]*\?>/gi, '');
-              config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
-          } catch (error: any) {
-              const errorMsg = `Unable to load entity '&${entityName};'. File '${relativePath}' is missing or unreadable.`;
-              console.error(`[WeAreFrank!] ${errorMsg}`, error);
-              
-              // Warn the user via the UI, but do not break the flow rendering completely
-              vscode.window.showWarningMessage(`WeAreFrank! Flow: ${errorMsg}`);
-          }
-      }
-
-      const includeMatches = [...config.matchAll(/<Include\s+ref=["']([^"']+)["']\s*\/>/gi)];
-      
-      for (const match of includeMatches) {
-          const fullMatch = match[0];
-          const relativePath = match[1];
-          try {
-              const includeUri = vscode.Uri.file(path.join(dir, relativePath));
-              const fileData = await vscode.workspace.fs.readFile(includeUri);
-              let includeContent = Buffer.from(fileData).toString('utf8');
-              
-              // Strip XML declarations from injected files
-              includeContent = includeContent.replace(/<\?xml[^>]*\?>/gi, '');
-              
-              // Replace the specific <Include ... /> tag with the fetched file content
-              config = config.replace(fullMatch, () => includeContent);
-          } catch (error: any) {
-              const errorMsg = `Unable to resolve Include reference. File '${relativePath}' is missing or unreadable.`;
-              console.error(`[WeAreFrank!] ${errorMsg}`, error);
-              
-              vscode.window.showWarningMessage(`Frank!Flow: ${errorMsg}`);
-          }
-      }
+      config = await this.resolveIncludesAndEntities(config, dir);
 
       const parser = new (global as any).DOMParser();
       const xml = parser.parseFromString(config, "text/xml");
 
       const parserErrors = xml.getElementsByTagName("parsererror");
-
       if (parserErrors.length > 0) {
-          const error = parserErrors[0].textContent;
-          this.webView.webview.html = getErrorWebviewContent(error);
-          return;
+        return { kind: 'error', message: String(parserErrors[0].textContent) };
       }
 
-      const canonicalizeSef = convertXSLtoSEF(this.context, "canonicalize");
+      const FRANK_ROOT_ELEMENTS = new Set(['configuration', 'module', 'adapter']);
+      const rootName = xml.documentElement.nodeName.toLowerCase();
+      if (!FRANK_ROOT_ELEMENTS.has(rootName)) {
+        return { kind: 'empty' };
+      }
 
-      const canoncalizedXml = SaxonJS.transform({
-        stylesheetText: canonicalizeSef,
-        sourceText: config,
-        destination: "serialized"
-      });
-
-      const isAdapter = xml.documentElement.nodeName.toLowerCase() === 'adapter' || 
-                        xml.getElementsByTagName("adapter").length > 0;
-
-      const mermaidSef = convertXSLtoSEF(
-        this.context,
-        isAdapter ? "adapter2mermaid" : "configuration2mermaid"
-      );
-      
-      const paramsPath = path.join(this.context.extensionPath, "resources/flow/xml/params.xml");
+      if (!this.canonicalizeSef) {
+        this.canonicalizeSef = convertXSLtoSEF(this.context, "canonicalize");
+      }
+      if (!this.mermaidSef) {
+        this.mermaidSef = convertXSLtoSEF(this.context, "adapter2mermaid");
+      }
 
       try {
+        if (!this.paramsXdm) {
+          const paramsPath = path.join(this.context.extensionPath, "resources/flow/xml/params.xml");
           const paramsBuffer = await vscode.workspace.fs.readFile(vscode.Uri.file(paramsPath));
           const paramsContent = Buffer.from(paramsBuffer).toString('utf8');
-
-          const paramsXdm: any = await SaxonJS.getResource({
-              type: "xml",
-              text: paramsContent
-          });
-
-          const mermaid = SaxonJS.transform({
-              stylesheetText: mermaidSef,
-              sourceText: canoncalizedXml.principalResult,
-              destination: "serialized",
-              stylesheetParams: {
-                  frankElements: paramsXdm
-              }
-          });
-
-            const css = this.webView.webview.asWebviewUri(
-              vscode.Uri.joinPath(
-                this.context.extensionUri,
-                'resources',
-                'css',
-                'flow-view-webcontent.css'
-              )
-            );
-
-            const codiconCss = this.webView.webview.asWebviewUri(
-              vscode.Uri.joinPath(
-                this.context.extensionUri,
-                'resources',
-                'css',
-                'codicon.css'
-              )
-            );
-
-            const script = this.webView.webview.asWebviewUri(
-              vscode.Uri.joinPath(
-                this.context.extensionUri,
-                'src',
-                'flow',
-                'flow-view-script.js'
-              )
-            );
-
-            const zoomScript = this.webView.webview.asWebviewUri(
-              vscode.Uri.joinPath(
-                this.context.extensionUri,
-                'node_modules',
-                'svg-pan-zoom',
-                'dist',
-                'svg-pan-zoom.min.js'
-              )
-            );
-
-            try {
-              frankLayout.initMermaid2Svg(frankLayout.getFactoryDimensions());
-              const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
-
-              this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
-            } catch (err: any) {
-              const errorMessage = err instanceof Error ? err.message : String(err);
-              console.error("[WeAreFrank!] Rendering failed:", err);
-              
-              this.webView.webview.html = getErrorWebviewContent(
-                  `Failed to generate the flow.\nPlease check your configuration syntax.\n\nDetails:\n${errorMessage}`
-              );
-            }
-          }
-          catch (error) {
-          console.error("Failed to process SaxonJS resources:", error);
-          this.webView.webview.html = getErrorWebviewContent("Internal transformation error: missing resources.");
-          return;
+          this.paramsXdm = await SaxonJS.getResource({ type: "xml", text: paramsContent });
         }
+
+        const canonicalizedXml = SaxonJS.transform({
+          stylesheetText: this.canonicalizeSef,
+          sourceText: config,
+          destination: "serialized"
+        });
+
+        const canonDoc = this.domParser.parseFromString(canonicalizedXml.principalResult, "text/xml");
+        const adapterNodes: any[] = Array.from(canonDoc.getElementsByTagName("adapter"));
+
+        if (adapterNodes.length === 0) {
+          return { kind: 'empty' };
+        }
+
+        const adapters: AdapterGraph[] = [];
+        for (const adapterNode of adapterNodes) {
+          const name = adapterNode.getAttribute("name") || "Adapter";
+          const adapterXml = this.xmlSerializer.serializeToString(adapterNode);
+          try {
+            const mermaid = SaxonJS.transform({
+              stylesheetText: this.mermaidSef,
+              sourceText: adapterXml,
+              destination: "serialized",
+              stylesheetParams: { frankElements: this.paramsXdm }
+            });
+            const graph = buildFlowGraph(mermaid.principalResult);
+            adapters.push({ name, graph, error: null });
+          } catch (innerErr: any) {
+            const message = innerErr instanceof Error ? innerErr.message : String(innerErr);
+            console.error(`[WeAreFrank!] Layout failed for adapter "${name}":`, innerErr);
+            adapters.push({ name, graph: null, error: message });
+          }
+        }
+
+        return { kind: 'graph', adapters };
+      } catch (error: any) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[WeAreFrank!] Flow processing failed:", error);
+        return { kind: 'error', message: `Internal transformation error.\n\nDetails:\n${message}` };
       }
+    }
+
+    // Resolve SYSTEM entities and <Include> tags iteratively so that included
+    // files' own includes/entities are also expanded (transitive resolution).
+    // Strip XML comments first so patterns inside example comments are ignored.
+    private async resolveIncludesAndEntities(config: string, dir: string): Promise<string> {
+      const MAX_PASSES = 10;
+      for (let pass = 0; pass < MAX_PASSES; pass++) {
+        const configWithoutComments: string = config.replace(/<!--[\s\S]*?-->/g, '');
+        let changed = false;
+
+        const entityMatches: RegExpMatchArray[] = [...configWithoutComments.matchAll(/<!ENTITY\s+([\w.-]+)\s+SYSTEM\s+["']([^"']+)["']\s*>/gi)];
+        for (const match of entityMatches) {
+          const entityName: string = match[1];
+          const relativePath: string = match[2];
+          try {
+            const entityUri = vscode.Uri.file(path.join(dir, relativePath));
+            const fileData = await vscode.workspace.fs.readFile(entityUri);
+            let entityContent = Buffer.from(fileData).toString('utf8');
+            entityContent = entityContent.replace(/<\?xml[^>]*\?>/gi, '');
+            const before: string = config;
+            config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
+            if (config !== before) { changed = true; }
+          } catch (error: any) {
+            const errorMsg = `Unable to load entity '&${entityName};'. File '${relativePath}' is missing or unreadable.`;
+            console.error(`[WeAreFrank!] ${errorMsg}`, error);
+            vscode.window.showWarningMessage(`WeAreFrank! Flow: ${errorMsg}`);
+          }
+        }
+
+        const includeMatches: RegExpMatchArray[] = [...configWithoutComments.matchAll(/<Include\s+ref=["']([^"']+)["']\s*(?:\/>|><\/Include>)/gi)];
+        for (const match of includeMatches) {
+          const fullMatch: string = match[0];
+          const relativePath: string = match[1];
+          try {
+            const includeUri = vscode.Uri.file(path.join(dir, relativePath));
+            const fileData = await vscode.workspace.fs.readFile(includeUri);
+            let includeContent = Buffer.from(fileData).toString('utf8');
+            includeContent = includeContent.replace(/<\?xml[^>]*\?>/gi, '');
+            config = config.replace(fullMatch, () => includeContent);
+            changed = true;
+          } catch (error: any) {
+            const errorMsg = `Unable to resolve Include reference. File '${relativePath}' is missing or unreadable.`;
+            console.error(`[WeAreFrank!] ${errorMsg}`, error);
+            vscode.window.showWarningMessage(`Frank!Flow: ${errorMsg}`);
+          }
+        }
+
+        if (!changed) { break; }
+      }
+      return config;
+    }
+
+    private navigateToPipe(pipeName: string, adapterName?: string) {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== "xml") {
+        return;
+      }
+
+      const text = editor.document.getText();
+      const match = findPipeInDocument(text, pipeName, adapterName);
+      if (!match) {
+        vscode.window.showInformationMessage(`Frank!Flow: '${pipeName}' not found in the active document.`);
+        return;
+      }
+
+      const valueStart = match.index + match[0].lastIndexOf(match[1]);
+      const startPos = editor.document.positionAt(valueStart);
+      const endPos = editor.document.positionAt(valueStart + match[1].length);
+      const selection = new vscode.Selection(startPos, endPos);
+
+      editor.selection = selection;
+      editor.revealRange(selection, vscode.TextEditorRevealType.InCenter);
+      vscode.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, preserveFocus: false });
+    }
+
+    private getWebviewShellHtml(): string {
+      const webview = this.webView.webview;
+      const nonce = getNonce();
+
+      const scriptUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this.context.extensionUri, 'out', 'flow', 'webview', 'webview.js')
+      );
+      const styleUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(this.context.extensionUri, 'out', 'flow', 'webview', 'webview.css')
+      );
+
+      const csp = [
+        `default-src 'none'`,
+        `img-src ${webview.cspSource} data:`,
+        `style-src ${webview.cspSource} 'unsafe-inline'`,
+        `font-src ${webview.cspSource} data:`,
+        `script-src 'nonce-${nonce}'`,
+      ].join('; ');
+
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="${styleUri}" />
+  <title>Flow</title>
+  <style>
+    html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; }
+    body { background-color: var(--vscode-editor-background); color: var(--vscode-editor-foreground); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>`;
+    }
 }
 
 function convertXSLtoSEF(context: any, xsl: any) {
@@ -215,99 +301,68 @@ function convertXSLtoSEF(context: any, xsl: any) {
   return JSON.stringify(SaxonJS.compile(doc));
 }
 
-
-function getCurrentConfiguration() {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) {
-    return;
+// Locate a pipe/element in the document text using three strategies in order:
+//
+// 1. name="pipeName" attribute — covers all named pipes and named exits.
+// 2. Tag name ending with pipeName (case-insensitive) — covers unnamed
+//    wrappers/validators whose canonical type name IS the label
+//    (e.g. pipeName "InputWrapper" finds <SoapInputWrapper ...).
+// 3. state="pipeName" attribute — covers exit nodes whose label comes from
+//    their state value rather than their name attribute.
+//
+// Returns a RegExpExecArray where match[1] is the token to select, so the
+// caller can highlight the exact attribute value or tag name.
+//
+// When adapterName is provided the search is restricted to within that
+// adapter's XML block, so clicking a receiver in one adapter doesn't
+// accidentally navigate to a same-named element in another adapter.
+function findPipeInDocument(text: string, pipeName: string, adapterName?: string): RegExpExecArray | null {
+  // Narrow to the adapter's block when possible so that unnamed elements
+  // (e.g. <Receiver>) resolve to the right adapter in multi-adapter configs.
+  let scope = text;
+  let offset = 0;
+  if (adapterName) {
+    const escapedAdapter = adapterName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const adapterStart = new RegExp(`<[Aa]dapter\\b[^>]*\\bname\\s*=\\s*["']${escapedAdapter}["']`);
+    const startMatch = adapterStart.exec(text);
+    if (startMatch) {
+      offset = startMatch.index;
+      // Find the closing </Adapter> or </adapter> tag after the opening.
+      const closingRe = /<\/[Aa]dapter\s*>/g;
+      closingRe.lastIndex = offset;
+      const closeMatch = closingRe.exec(text);
+      scope = closeMatch
+        ? text.slice(offset, closeMatch.index + closeMatch[0].length)
+        : text.slice(offset);
+    }
   }
-  return editor.document.getText();
+
+  const escaped = pipeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // STEP 1: name attribute match
+  const byName = new RegExp(`<[A-Za-z][\\w.-]*\\b[^>]*\\bname\\s*=\\s*["'](${escaped})["']`);
+  const m1 = byName.exec(scope);
+  if (m1) { m1.index += offset; return m1; }
+
+  // STEP 2: tag name ending with pipeName (case-insensitive) — for unnamed
+  // wrappers/validators. e.g. "InputWrapper" → <SoapInputWrapper, <ApiInputWrapper
+  const byTag = new RegExp(`<([A-Za-z][\\w.]*${escaped})(?:\\s|>|\\/)`,'i');
+  const m2 = byTag.exec(scope);
+  if (m2) { m2.index += offset; return m2; }
+
+  // STEP 3: state attribute match — for exit nodes labeled by state
+  const byState = new RegExp(`<[A-Za-z][\\w.-]*\\b[^>]*\\bstate\\s*=\\s*["'](${escaped})["']`,'i');
+  const m3 = byState.exec(scope);
+  if (m3) { m3.index += offset; return m3; }
+
+  return null;
 }
 
-function getWebviewContent(svg: any, css: any, codiconCss: any, script: any, zoomScript: any) {
-  return `
-  <!DOCTYPE html>
-  <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Flowchart</title>
-        <link rel="stylesheet" href="${css}">
-        <link rel="stylesheet" href="${codiconCss}" >
-      </head>
-      <body>
-        <div id="container">
-          ${svg}
-          <div id="toolbar">
-            <i class="codicon codicon-zoom-in" id="zoom-in"></i>
-            <i class="codicon codicon-discard" id="reset"></i>
-            <i class="codicon codicon-zoom-out" id="zoom-out"></i>
-          </div>
-        </div>
-
-        <script src="${zoomScript}"></script>
-        <script src="${script}"></script>
-      </body>
-  </html>
-  `;
+function getNonce(): string {
+  let text = '';
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
 }
-
-function getErrorWebviewContent(error: any) {
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Flowchart – Error</title>
-        <style>
-            body {
-                font-family: sans-serif;
-                color: var(--vscode-errorForeground);
-                padding: 10px;
-            }
-            pre {
-                background: var(--vscode-editorWidget-background);
-                border-left: 4px solid var(--vscode-errorForeground);
-                padding: 5px;
-                white-space: pre-wrap;
-            }
-        </style>
-    </head>
-    <body>
-        <h2>Error</h2>
-        <p>Something is wrong with your XML :(</p>
-        <pre>${error}</pre>
-    </body>
-    </html>
-    `;
-}
-
-function getOpenedWithEmptyEditorWebviewContent() {
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Flowchart</title>
-        <style>
-            body {
-                font-family: sans-serif;
-                color: var(--vscode-textLink-foreground);
-                padding: 10px;
-            }
-            pre {
-                background: var(--vscode-editorWidget-background);
-                border-left: 4px solid var(--vscode-errorForeground);
-                padding: 5px;
-                white-space: pre-wrap;
-            }
-        </style>
-    </head>
-    <body>
-        <h2>Hello!</h2>
-        <p>Open a Frank!Configuration to get started :)</p>
-    </body>
-    </html>
-    `;
-}
-
-// Exported as default above

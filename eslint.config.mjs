@@ -8,7 +8,8 @@ export default [
             "out/**",
             "dist/**",
             "node_modules/**",
-            "test-workspace/**"
+            "test-workspace/**",
+            "src/flow/webview/**"
         ],
     },
     {
