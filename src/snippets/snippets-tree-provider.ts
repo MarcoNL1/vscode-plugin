@@ -1,14 +1,15 @@
 import * as vscode from 'vscode';
+import SnippetsService, { Snippet, UserSnippets } from './snippets-service';
 
 class SnippetsTreeProvider {
-  _onDidChangeTreeData: any;
-  onDidChangeTreeData: any;
-  userSnippetsService: any;
-  userSnippetsTreeItems: any[];
-  rootTreeItem: any;
-  rootTreeItems: any[] = [];
+  _onDidChangeTreeData: vscode.EventEmitter<null>;
+  onDidChangeTreeData: vscode.Event<null>;
+  userSnippetsService: SnippetsService;
+  userSnippetsTreeItems: SnippetTreeItem[];
+  rootTreeItem: RootTreeItem | null;
+  rootTreeItems: RootTreeItem[] = [];
 
-  constructor(userSnippetsService: any) {
+  constructor(userSnippetsService: SnippetsService) {
     this._onDidChangeTreeData = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -19,16 +20,16 @@ class SnippetsTreeProvider {
     this.rebuild();
   }
 
-  refresh() {
+  refresh(): void {
     this._onDidChangeTreeData.fire(null);
   }
 
-  rebuild() {
-    const userCategories = [];
-    const frameworkCategories = [];
+  rebuild(): void {
+    const userCategories: CategoryTreeItem[] = [];
+    const frameworkCategories: CategoryTreeItem[] = [];
 
-    const userSnippets = this.userSnippetsService.getUserSnippets();
-    const frameworkSnippets = this.userSnippetsService.getFrameworkSnippets();
+    const userSnippets: UserSnippets = this.userSnippetsService.getUserSnippets();
+    const frameworkSnippets: UserSnippets = this.userSnippetsService.getFrameworkSnippets();
 
     for (const category in userSnippets) {
       userCategories.push(
@@ -50,11 +51,11 @@ class SnippetsTreeProvider {
     ];
   }
 
-  getTreeItem(treeItem: any) {
+  getTreeItem(treeItem: RootTreeItem | CategoryTreeItem | SnippetTreeItem): vscode.TreeItem {
     return treeItem;
   }
 
-  getChildren(treeItem: any) {
+  getChildren(treeItem?: RootTreeItem | CategoryTreeItem | SnippetTreeItem): (RootTreeItem | CategoryTreeItem | SnippetTreeItem)[] {
     if (!treeItem) {
       return this.rootTreeItems;
     }
@@ -70,81 +71,71 @@ class SnippetsTreeProvider {
     return [];
   }
 
-  convertUserSnippetToCategoryTreeItem(category: any, root: any, userSnippetsPerCategory: any) {
-    return new CategoryTreeItem(category, root, userSnippetsPerCategory, vscode.TreeItemCollapsibleState.Expanded);
+  convertUserSnippetToCategoryTreeItem(category: string, root: string, snippets: Snippet[]): CategoryTreeItem {
+    return new CategoryTreeItem(category, root, snippets, vscode.TreeItemCollapsibleState.Expanded);
   }
 
-  convertFrameworkSnippetToCategoryTreeItem(category: any, root: any, snippets: any) {
+  convertFrameworkSnippetToCategoryTreeItem(category: string, root: string, snippets: Snippet[]): CategoryTreeItem {
     return new CategoryTreeItem(category, root, snippets, vscode.TreeItemCollapsibleState.Collapsed);
   }
-
 }
 
-class RootTreeItem {
-  label: any;
-  collapsibleState: any;
-  categoryTreeItems: any[];
-  contextValue: any;
+class RootTreeItem extends vscode.TreeItem {
+  categoryTreeItems: CategoryTreeItem[];
 
-  constructor(label: any, categoryTreeItems: any[], contextValue?: any) {
-    this.label = label;
-    this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+  constructor(label: string, categoryTreeItems: CategoryTreeItem[], contextValue?: string) {
+    super(label, vscode.TreeItemCollapsibleState.Collapsed);
     this.categoryTreeItems = categoryTreeItems;
     this.contextValue = contextValue ?? "snippetsRoot";
   }
 
-  getCategoryTreeItems() {
+  getCategoryTreeItems(): CategoryTreeItem[] {
     return this.categoryTreeItems;
   }
 }
 
 class CategoryTreeItem extends vscode.TreeItem {
-  userSnippetsPerCategory: any[];
-  snippetTreeItems: any[];
-  root: any;
+  snippetsPerCategory: Snippet[];
+  snippetTreeItems: SnippetTreeItem[];
+  root: string;
 
-  constructor(category: any, root: any, userSnippetsPerCategory: any[], collapsibleState: any) {
+  constructor(category: string, root: string, snippetsPerCategory: Snippet[], collapsibleState: vscode.TreeItemCollapsibleState) {
     super(category, collapsibleState);
-    this.userSnippetsPerCategory = userSnippetsPerCategory;
+    this.snippetsPerCategory = snippetsPerCategory;
     this.snippetTreeItems = [];
     this.root = root;
     this.contextValue = `categoryTreeItem-${root}`;
 
-    if (this.root == "user") {
+    if (this.root === "user") {
       this.command = {
         command: "frank.showUserSnippetsViewPerCategory",
         title: "Show Snippets",
         arguments: [category]
       };
     }
-    
+
     this.convertSnippetsToSnippetTreeItems();
   }
 
-  convertSnippetsToSnippetTreeItems() {
-    const arr: any[] = [];
-
-    this.userSnippetsPerCategory.forEach((snippet: any, index: any) => {
-      arr.push(new SnippetTreeItem(snippet.prefix, snippet.body, this.root, this.label, index));
-    });
-
-    this.snippetTreeItems = arr;
+  convertSnippetsToSnippetTreeItems(): void {
+    this.snippetTreeItems = this.snippetsPerCategory.map((snippet, index) =>
+      new SnippetTreeItem(snippet.prefix, snippet.body, this.root, this.label as string, index)
+    );
   }
 
-  getSnippetTreeItems() {
+  getSnippetTreeItems(): SnippetTreeItem[] {
     return this.snippetTreeItems;
   }
 }
 
 class SnippetTreeItem extends vscode.TreeItem {
-  id: any;
-  prefix: any;
-  category: any;
-  index: any;
-  root: any;
-  body: any;
+  prefix: string;
+  category: string;
+  index: number;
+  root: string;
+  body: string;
 
-  constructor(prefix: any, body: any, root: any, category: any, index: any) {
+  constructor(prefix: string, body: string, root: string, category: string, index: number) {
     super(`${prefix}`);
     this.id = `${category}:${index}:${prefix}`;
     this.prefix = prefix;
@@ -157,11 +148,11 @@ class SnippetTreeItem extends vscode.TreeItem {
     this.description = String(index);
 
     this.command = {
-        command: "frank.insertSnippet",
-        title: "Insert Snippet",
-        arguments: [this.body]
-      };
+      command: "frank.insertSnippet",
+      title: "Insert Snippet",
+      arguments: [this.body]
+    };
   }
 }
 
-export { SnippetsTreeProvider };
+export { SnippetsTreeProvider, CategoryTreeItem, SnippetTreeItem };

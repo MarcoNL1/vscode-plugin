@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import * as path from 'path';
+import SnippetsService, { Snippet, SnippetsRefreshable } from './snippets-service';
 
-function showSnippetsView(context: any, category: any, userSnippetsTreeProvider: any, userSnippetsService: any) {
+function showSnippetsView(context: vscode.ExtensionContext, category: string, userSnippetsTreeProvider: SnippetsRefreshable, userSnippetsService: SnippetsService): void {
     const panel = vscode.window.createWebviewPanel(
         'frankSnippets',
         'Frank! Snippets',
@@ -50,19 +50,19 @@ function showSnippetsView(context: any, category: any, userSnippetsTreeProvider:
         async (message) => {
             switch (message.command) {
                 case 'deleteSnippet':
-                    deleteSnippet(context, category, message.snippetIndex, userSnippetsTreeProvider, userSnippetsService);
+                    deleteSnippet(category, message.snippetIndex, userSnippetsTreeProvider, userSnippetsService);
                     break;
                 case 'editSnippet':
-                    editSnippet(context, category, message.snippetIndex, message.snippet, userSnippetsService, userSnippetsTreeProvider);
+                    editSnippet(category, message.snippetIndex, message.snippet, userSnippetsService, userSnippetsTreeProvider);
                     break;
                 case 'addSnippet':
-                    addSnippet(context, category, message.snippet, userSnippetsService, userSnippetsTreeProvider);
+                    addSnippet(category, message.snippet, userSnippetsService, userSnippetsTreeProvider);
                     break;
                 case 'exportUserSnippets':
-                    exportUserSnippets(context, message.category, userSnippetsService);
+                    exportUserSnippets(message.category, userSnippetsService);
                     break;
                 case 'changeCategoryOfUserSnippets':
-                    changeCategoryOfUserSnippets(context, category, message.category, userSnippetsService, userSnippetsTreeProvider);
+                    changeCategoryOfUserSnippets(category, message.category, userSnippetsService, userSnippetsTreeProvider);
                     break;
                 case 'copySnippet':
                     copySnippet(message.snippet);
@@ -77,60 +77,60 @@ function showSnippetsView(context: any, category: any, userSnippetsTreeProvider:
     );
 }
 
-function deleteSnippet(context: any, category: any, snippetIndex: any, userSnippetsTreeProvider: any, userSnippetsService: any) {
+function deleteSnippet(category: string, snippetIndex: number, provider: SnippetsRefreshable, userSnippetsService: SnippetsService): void {
     userSnippetsService.deleteUserSnippet(category, snippetIndex);
 
-    userSnippetsTreeProvider.rebuild();
-    userSnippetsTreeProvider.refresh();
+    provider.rebuild();
+    provider.refresh();
 }
 
-function editSnippet(context: any, category: any, snippetIndex: any, snippet: any, userSnippetsService: any, userSnippetsTreeProvider: any) {
+function editSnippet(category: string, snippetIndex: number, snippet: Snippet, userSnippetsService: SnippetsService, provider: SnippetsRefreshable): void {
     try {
         const userSnippets = userSnippetsService.getUserSnippets();
-        
+
         userSnippets[category][snippetIndex] = snippet;
-        
+
         userSnippetsService.setUserSnippets(userSnippets);
 
-        userSnippetsTreeProvider.rebuild();
-        userSnippetsTreeProvider.refresh();
+        provider.rebuild();
+        provider.refresh();
     } catch (err) {
         console.error(err);
     }
 }
 
-function addSnippet(context: any, category: any, snippet: any, userSnippetsService: any, userSnippetsTreeProvider: any) {
+function addSnippet(category: string, snippet: Snippet, userSnippetsService: SnippetsService, provider: SnippetsRefreshable): void {
     const userSnippets = userSnippetsService.getUserSnippets();
 
     userSnippets[category].push(snippet);
 
     userSnippetsService.setUserSnippets(userSnippets);
 
-    userSnippetsTreeProvider.rebuild();
-    userSnippetsTreeProvider.refresh();
+    provider.rebuild();
+    provider.refresh();
 }
 
-function exportUserSnippets(context: any, category: any, userSnippetsService: any) {
+function exportUserSnippets(category: string, userSnippetsService: SnippetsService): void {
     userSnippetsService.uploadUserSnippet(category);
 }
 
-function changeCategoryOfUserSnippets(context: any, oldCategory: any, category: any, userSnippetsService: any, userSnippetsTreeProvider: any) {
+function changeCategoryOfUserSnippets(oldCategory: string, category: string, userSnippetsService: SnippetsService, provider: SnippetsRefreshable): void {
     userSnippetsService.changeCategoryOfUserSnippets(oldCategory, category);
 
-    userSnippetsTreeProvider.rebuild();
-    userSnippetsTreeProvider.refresh();
+    provider.rebuild();
+    provider.refresh();
 }
 
-function copySnippet(snippet: any) {
+function copySnippet(snippet: string): void {
     vscode.env.clipboard.writeText(snippet);
     vscode.window.showInformationMessage("Copied snippet to clipboard!");
 }
 
-function showError() {
+function showError(): void {
     vscode.window.showErrorMessage("Error");
 }
 
-function getWebviewContent(safeUserSnippets: any, category: any, script: any, css: any, codiconCss: any) {
+function getWebviewContent(safeUserSnippets: string, category: string, script: vscode.Uri, css: vscode.Uri, codiconCss: vscode.Uri): string {
     return `<!DOCTYPE html>
     <html lang="en">
         <head>

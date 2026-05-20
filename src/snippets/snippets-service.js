@@ -164,8 +164,8 @@ class SnippetsService {
         const targetDir = path.join(storagePath, "frankframework.wiki");
         const targetPath = path.join(targetDir, `${category}.md`);
         try {
-            (0, child_process_1.exec)(`git reset --hard`, { cwd: targetDir }, (err) => {
-                (0, child_process_1.exec)(`git clean -fd`, { cwd: targetDir }, (err) => {
+            (0, child_process_1.exec)(`git reset --hard`, { cwd: targetDir }, (_err) => {
+                (0, child_process_1.exec)(`git clean -fd`, { cwd: targetDir }, (_err) => {
                     (0, child_process_1.exec)(`git pull`, { cwd: targetDir }, async (err) => {
                         if (err) {
                             console.log(err);

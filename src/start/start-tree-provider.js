@@ -67,7 +67,7 @@ class StartTreeProvider {
 }
 exports.StartTreeProvider = StartTreeProvider;
 class StartTreeItem extends vscode.TreeItem {
-    constructor(label, projects, method, collapsibleState, startService, workingDir) {
+    constructor(label, projects, method, collapsibleState, startService) {
         super(label, collapsibleState);
         this.projects = projects;
         this.method = method;

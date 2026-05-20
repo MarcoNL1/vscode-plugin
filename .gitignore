@@ -1,5 +1,7 @@
 node_modules
 out/
+src/**/*.js.map
+src/**/*.d.ts.map
 # VS Code Test downloads
 .vscode-test/
 .claude/

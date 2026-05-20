@@ -4,7 +4,6 @@ import { SessionKeyRenameProvider } from './sessionKeyRenameProvider';
 
 export class MasterRenameProvider implements vscode.RenameProvider {
     
-    // Instantiate your underlying logic classes
     private frankProvider = new FrankRenameProvider();
     private sessionProvider = new SessionKeyRenameProvider();
 
@@ -16,13 +15,11 @@ export class MasterRenameProvider implements vscode.RenameProvider {
         
         const line = document.lineAt(position.line).text;
         
-        // 1. Check if the cursor is within a name or path attribute
         const frankRegex = /(?:name|path)\s*=\s*(["'])([^"']+)\1/gi;
         if (this.isCursorInsideAttributeValue(line, position.character, frankRegex)) {
             return this.frankProvider.prepareRename(document, position, token);
         }
 
-        // 2. Check if the cursor is within a sessionKey attribute
         const sessionKeyRegex = /\b(?:\w*sessionKey)\s*=\s*(["'])([^"']+)\1/gi;
         if (this.isCursorInsideAttributeValue(line, position.character, sessionKeyRegex)) {
             return this.sessionProvider.prepareRename(document, position, token);

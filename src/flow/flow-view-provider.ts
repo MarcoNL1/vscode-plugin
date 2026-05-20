@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as SaxonJS from 'saxon-js';
-import { JSDOM } from "jsdom";
+import { JSDOM, XmlParser, XmlSerializer, XmlElement } from "jsdom";
 import { buildFlowGraph, FlowGraph } from './layout-builder';
 
 interface AdapterGraph {
@@ -15,25 +15,31 @@ type WebviewState =
     | { kind: 'error'; message: string }
     | { kind: 'graph'; adapters: AdapterGraph[] };
 
-export default class FlowViewProvider {
-    context: any;
-    webView: any;
+interface WebviewMessage {
+    type: string;
+    pipeName?: string;
+    adapterName?: string;
+}
+
+export default class FlowViewProvider implements vscode.WebviewViewProvider {
+    context: vscode.ExtensionContext;
+    webView: vscode.WebviewView | null = null;
 
     // Cached heavy resources — computed once per extension lifetime
     private canonicalizeSef: string | null = null;
     private mermaidSef: string | null = null;
-    private paramsXdm: any = null;
-    private domParser: any = null;
-    private xmlSerializer: any = null;
+    private paramsXdm: unknown = null;
+    private domParser: XmlParser | null = null;
+    private xmlSerializer: XmlSerializer | null = null;
 
     private htmlSet = false;
     private lastState: WebviewState = { kind: 'empty' };
 
-    constructor(context: any) {
+    constructor(context: vscode.ExtensionContext) {
       this.context = context;
     }
 
-    resolveWebviewView(webviewView: any) {
+    resolveWebviewView(webviewView: vscode.WebviewView, _context: vscode.WebviewViewResolveContext, _token: vscode.CancellationToken): void {
       this.webView = webviewView;
       this.webView.webview.options = {
         enableScripts: true,
@@ -41,14 +47,14 @@ export default class FlowViewProvider {
       };
 
       const jsdomWindow = new JSDOM().window;
-      (global as any).DOMParser = jsdomWindow.DOMParser;
-      (global as any).document = jsdomWindow.document;
+      (global as Record<string, unknown>).DOMParser = jsdomWindow.DOMParser;
+      (global as Record<string, unknown>).document = jsdomWindow.document;
       this.domParser = new jsdomWindow.DOMParser();
-      this.xmlSerializer = new (jsdomWindow as any).XMLSerializer();
+      this.xmlSerializer = new jsdomWindow.XMLSerializer();
 
       this.htmlSet = false;
 
-      this.webView.webview.onDidReceiveMessage((msg: any) => {
+      this.webView.webview.onDidReceiveMessage((msg: WebviewMessage) => {
         if (!msg || typeof msg !== 'object') {
           return;
         }
@@ -98,7 +104,7 @@ export default class FlowViewProvider {
       const dir = path.dirname(editor.document.fileName);
       config = await this.resolveIncludesAndEntities(config, dir);
 
-      const parser = new (global as any).DOMParser();
+      const parser = new (global as { DOMParser: new () => XmlParser }).DOMParser();
       const xml = parser.parseFromString(config, "text/xml");
 
       const parserErrors = xml.getElementsByTagName("parsererror");
@@ -133,8 +139,8 @@ export default class FlowViewProvider {
           destination: "serialized"
         });
 
-        const canonDoc = this.domParser.parseFromString(canonicalizedXml.principalResult, "text/xml");
-        const adapterNodes: any[] = Array.from(canonDoc.getElementsByTagName("adapter"));
+        const canonDoc = this.domParser!.parseFromString(canonicalizedXml.principalResult, "text/xml");
+        const adapterNodes: XmlElement[] = Array.from(canonDoc.getElementsByTagName("adapter"));
 
         if (adapterNodes.length === 0) {
           return { kind: 'empty' };
@@ -143,17 +149,17 @@ export default class FlowViewProvider {
         const adapters: AdapterGraph[] = [];
         for (const adapterNode of adapterNodes) {
           const name = adapterNode.getAttribute("name") || "Adapter";
-          const adapterXml = this.xmlSerializer.serializeToString(adapterNode);
+          const adapterXml = this.xmlSerializer!.serializeToString(adapterNode);
           try {
             const mermaid = SaxonJS.transform({
               stylesheetText: this.mermaidSef,
               sourceText: adapterXml,
               destination: "serialized",
-              stylesheetParams: { frankElements: this.paramsXdm }
+              stylesheetParams: { frankElements: this.paramsXdm as Record<string, unknown> }
             });
             const graph = buildFlowGraph(mermaid.principalResult);
             adapters.push({ name, graph, error: null });
-          } catch (innerErr: any) {
+          } catch (innerErr) {
             const message = innerErr instanceof Error ? innerErr.message : String(innerErr);
             console.error(`[WeAreFrank!] Layout failed for adapter "${name}":`, innerErr);
             adapters.push({ name, graph: null, error: message });
@@ -161,7 +167,7 @@ export default class FlowViewProvider {
         }
 
         return { kind: 'graph', adapters };
-      } catch (error: any) {
+      } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error("[WeAreFrank!] Flow processing failed:", error);
         return { kind: 'error', message: `Internal transformation error.\n\nDetails:\n${message}` };
@@ -189,7 +195,7 @@ export default class FlowViewProvider {
             const before: string = config;
             config = config.replace(new RegExp(`&${entityName};`, 'g'), () => entityContent);
             if (config !== before) { changed = true; }
-          } catch (error: any) {
+          } catch (error) {
             const errorMsg = `Unable to load entity '&${entityName};'. File '${relativePath}' is missing or unreadable.`;
             console.error(`[WeAreFrank!] ${errorMsg}`, error);
             vscode.window.showWarningMessage(`WeAreFrank! Flow: ${errorMsg}`);
@@ -207,7 +213,7 @@ export default class FlowViewProvider {
             includeContent = includeContent.replace(/<\?xml[^>]*\?>/gi, '');
             config = config.replace(fullMatch, () => includeContent);
             changed = true;
-          } catch (error: any) {
+          } catch (error) {
             const errorMsg = `Unable to resolve Include reference. File '${relativePath}' is missing or unreadable.`;
             console.error(`[WeAreFrank!] ${errorMsg}`, error);
             vscode.window.showWarningMessage(`Frank!Flow: ${errorMsg}`);
@@ -243,7 +249,7 @@ export default class FlowViewProvider {
     }
 
     private getWebviewShellHtml(): string {
-      const webview = this.webView.webview;
+      const webview = this.webView!.webview;
       const nonce = getNonce();
 
       const scriptUri = webview.asWebviewUri(
@@ -282,7 +288,7 @@ export default class FlowViewProvider {
     }
 }
 
-function convertXSLtoSEF(context: any, xsl: any) {
+function convertXSLtoSEF(context: vscode.ExtensionContext, xsl: string): string {
   const xslPath = path.join(
     context.extensionPath,
     "resources/flow/xsl",
@@ -327,7 +333,6 @@ function findPipeInDocument(text: string, pipeName: string, adapterName?: string
     const startMatch = adapterStart.exec(text);
     if (startMatch) {
       offset = startMatch.index;
-      // Find the closing </Adapter> or </adapter> tag after the opening.
       const closingRe = /<\/[Aa]dapter\s*>/g;
       closingRe.lastIndex = offset;
       const closeMatch = closingRe.exec(text);

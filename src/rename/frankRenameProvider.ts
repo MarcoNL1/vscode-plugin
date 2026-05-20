@@ -71,7 +71,7 @@ export class FrankRenameProvider implements vscode.RenameProvider {
             }
         }
 
-        // STEP 3: Carefully construct the text edits
+        // STEP 3: Build text edits
         for (const item of elementsToRename) {
             const startLine = (item.node as any).lineNumber - 1;
             if (startLine < 0 || startLine >= document.lineCount) continue;
@@ -94,15 +94,12 @@ export class FrankRenameProvider implements vscode.RenameProvider {
                     startIndex = lineText.indexOf(searchStringSingle);
                 }
 
-                // Once we locate the exact line and position of the attribute:
                 if (startIndex !== -1) {
                     const startPos = new vscode.Position(currentLine, startIndex + offset);
                     const endPos = new vscode.Position(currentLine, startIndex + offset + oldName.length);
-                    
+
                     edit.replace(document.uri, new vscode.Range(startPos, endPos), newName);
-                    
-                    // Target found and replaced for this node, move on to the next element
-                    break; 
+                    break;
                 }
             }
         }
@@ -122,21 +119,18 @@ export class FrankRenameProvider implements vscode.RenameProvider {
             throw new Error("Invalid rename: You can only rename the 'name' attribute of Pipes or the 'path' attribute of Forwards.");
         }
         
-        // Use a Regex to find the exact boundaries of the name= or path= attributes on this line
         const regex = /(?:name|path)=["']([^"']+)["']/g;
         let match;
-        
+
         while ((match = regex.exec(line)) !== null) {
-            const attributeValue = match[1]; // The actual name without quotes (e.g., "Only one line?")
+            const attributeValue = match[1];
             const valueStartIndex = match.index + match[0].indexOf(attributeValue);
             const valueEndIndex = valueStartIndex + attributeValue.length;
-            
-            // Check if the user's cursor is actually positioned inside the quotes of this specific attribute
+
             if (position.character >= valueStartIndex && position.character <= valueEndIndex) {
                 const startPos = new vscode.Position(position.line, valueStartIndex);
                 const endPos = new vscode.Position(position.line, valueEndIndex);
 
-                // Explicitly tell VS Code exactly what text to select and replace
                 return {
                     range: new vscode.Range(startPos, endPos),
                     placeholder: attributeValue

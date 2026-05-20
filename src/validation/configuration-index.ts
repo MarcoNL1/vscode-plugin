@@ -6,7 +6,6 @@ export class ConfigurationIndex {
     private listeners: Map<string, string> = new Map();
 
     public async buildIndex(): Promise<void> {
-        // Find all XML files, explicitly ignoring common large/irrelevant directories
         const files = await vscode.workspace.findFiles('**/*.xml', '**/node_modules/**');
         
         for (const file of files) {
@@ -33,11 +32,10 @@ export class ConfigurationIndex {
             // Purge old entries for this specific file before adding new ones
             this.removeFile(uri);
 
-            // Convert HTMLCollections immediately to standard Arrays to enable proper iteration
+            // HTMLCollection is not iterable — convert to Array first
             const javaListeners = Array.from(xmlDoc.getElementsByTagName('JavaListener'));
             const frankListeners = Array.from(xmlDoc.getElementsByTagName('FrankListener')); 
 
-            // Combine into a single iterable array
             const allListeners: Element[] = [...javaListeners, ...frankListeners];
             
             for (const listener of allListeners) {

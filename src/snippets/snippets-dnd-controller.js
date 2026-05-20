@@ -10,7 +10,7 @@ class SnippetsDndController {
         this.dragMimeTypes = ["application/vnd.code.tree.snippetsTreeview"];
         this.dropMimeTypes = ["application/vnd.code.tree.snippetsTreeview"];
     }
-    async handleDrag(sourceItems, dataTransfer, token) {
+    async handleDrag(sourceItems, dataTransfer, _token) {
         const draggableItems = sourceItems.filter(item => item.contextValue === "snippetTreeItem-user");
         const payload = draggableItems.map(item => ({
             index: item.index,
@@ -19,7 +19,7 @@ class SnippetsDndController {
         }));
         dataTransfer.set("application/vnd.code.tree.snippetsTreeview", new vscode.DataTransferItem(JSON.stringify(payload)));
     }
-    async handleDrop(target, dataTransfer, token) {
+    async handleDrop(target, dataTransfer, _token) {
         const dataItem = dataTransfer.get("application/vnd.code.tree.snippetsTreeview");
         const payload = JSON.parse(dataItem.value);
         if (target?.contextValue === "categoryTreeItem-user") {

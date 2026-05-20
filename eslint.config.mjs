@@ -22,7 +22,9 @@ export default [
                 ...globals.browser,
                 acquireVsCodeApi: "readonly",
                 svgPanZoom: "readonly",
-                container: "readonly"
+                container: "readonly",
+                safeUserSnippets: "readonly",
+                category: "readonly"
             },
 
             ecmaVersion: 2022,
@@ -34,7 +36,7 @@ export default [
             "no-this-before-super": "warn",
             "no-undef": "warn",
             "no-unreachable": "warn",
-            "no-unused-vars": "warn",
+            "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
             "constructor-super": "warn",
             "valid-typeof": "warn",
         },

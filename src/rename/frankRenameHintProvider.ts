@@ -1,21 +1,19 @@
 import * as vscode from 'vscode';
 
 export class FrankRenameHintProvider {
-    // Define the appearance of the ghost text
     private hintDecorationType = vscode.window.createTextEditorDecorationType({
         after: {
             contentText: ' Press F2 to rename',
-            color: new vscode.ThemeColor('editorGhostText.foreground'), 
+            color: new vscode.ThemeColor('editorGhostText.foreground'),
             margin: '0 0 0 5px',
             fontStyle: 'italic'
         }
     });
 
     public register(context: vscode.ExtensionContext) {
-        // Listen for cursor movements and selections
         const selectionChangeListener = vscode.window.onDidChangeTextEditorSelection(event => {
             const editor = event.textEditor;
-            
+
             // We only do this in XML files
             if (editor.document.languageId !== 'xml') return;
 
@@ -38,7 +36,6 @@ export class FrankRenameHintProvider {
                 const valueStartIndex = match.index + match[0].indexOf(attributeValue);
                 const valueEndIndex = valueStartIndex + attributeValue.length;
 
-                // Check if the cursor is inside the quotes
                 if (position.character >= valueStartIndex && position.character <= valueEndIndex) {
                     showHint = true;
                     break;
@@ -46,19 +43,16 @@ export class FrankRenameHintProvider {
             }
 
             if (showHint) {
-                // Place the virtual text at the END of the current line
                 const range = new vscode.Range(
-                    position.line, lineText.length, 
+                    position.line, lineText.length,
                     position.line, lineText.length
                 );
                 editor.setDecorations(this.hintDecorationType, [range]);
             } else {
-                // Clear the decoration if we are not on a valid attribute
                 editor.setDecorations(this.hintDecorationType, []);
             }
         });
 
-        // Clean up the listener when the extension closes
         context.subscriptions.push(selectionChangeListener);
     }
 }

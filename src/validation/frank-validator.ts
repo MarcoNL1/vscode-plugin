@@ -49,11 +49,9 @@ export class FrankValidator {
         this.validatePipelines(xmlDoc, document, diagnostics);
         this.validateLocalSenders(xmlDoc, document, diagnostics);
         
-        // 2. Await the asynchronous expression and schema reference validation
         await this.validateExpressions(xmlDoc, document, diagnostics, token);
         await this.validateSchemaReferences(xmlDoc, document, diagnostics, token);
 
-        // 3. Final check before committing diagnostics to the UI
         if (token?.isCancellationRequested) return;
 
         this.diagnosticCollection.set(document.uri, diagnostics);

@@ -158,7 +158,6 @@ function activate(context) {
     });
     async function setStartTreeViewDescription() {
         const project = await startService.getWorkingDirectory();
-        let projectName = "";
         if (project != undefined) {
             startTreeView.description = path.basename(project);
         }
@@ -203,7 +202,7 @@ function activate(context) {
         snippetsService.addNewCategoryOfUserSnippets(snippetsTreeProvider);
     });
     vscode.commands.registerCommand("frank.deleteAllUserSnippetByCategory", (item) => {
-        const userSnippets = snippetsService.deleteAllUserSnippetByCategory(item.label);
+        snippetsService.deleteAllUserSnippetByCategory(item.label);
         snippetsTreeProvider.rebuild();
         snippetsTreeProvider.refresh();
     });
@@ -214,7 +213,7 @@ function activate(context) {
         (0, usersnippets_view_1.showSnippetsView)(context, item.category, snippetsTreeProvider, snippetsService);
     });
     vscode.commands.registerCommand("frank.deleteUserSnippet", (item) => {
-        const userSnippets = snippetsService.deleteUserSnippet(item.category, item.index);
+        snippetsService.deleteUserSnippet(item.category, item.index);
         snippetsTreeProvider.rebuild();
         snippetsTreeProvider.refresh();
     });
@@ -234,7 +233,7 @@ function activate(context) {
         vscode.window.showInformationMessage("Snippet added!");
     });
     vscode.languages.registerDocumentLinkProvider({ language: 'xml', scheme: 'file' }, {
-        provideDocumentLinks(document, token) {
+        provideDocumentLinks(document, _token) {
             const links = [];
             const text = document.getText();
             const regex = /\w+/g;

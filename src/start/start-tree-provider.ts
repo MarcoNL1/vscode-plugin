@@ -1,14 +1,20 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import StartService from './start-service';
+
+interface Project {
+    project: string;
+    path: string;
+}
 
 class StartTreeProvider {
-    context: any;
-    startService: any;
-    _onDidChangeTreeData: any;
-    onDidChangeTreeData: any;
-    startTreeItems: any[] = [];
+    context: vscode.ExtensionContext;
+    startService: StartService;
+    _onDidChangeTreeData: vscode.EventEmitter<null>;
+    onDidChangeTreeData: vscode.Event<null>;
+    startTreeItems: StartTreeItem[] = [];
 
-    constructor(context: any, startService: any) {
+    constructor(context: vscode.ExtensionContext, startService: StartService) {
         this.context = context;
         this.startService = startService;
 
@@ -23,18 +29,18 @@ class StartTreeProvider {
         this.rebuild().then(() => this.refresh());
     }
 
-    refresh() {
+    refresh(): void {
         this._onDidChangeTreeData.fire(null);
     }
 
-    async rebuild() {
+    async rebuild(): Promise<void> {
         const [antPaths, dockerPaths] = await Promise.all([
             this.startService.discoverAntProjects(),
             this.startService.discoverDockerProjects()
         ]);
 
-        const antProjects = antPaths.map((p: string) => ({ project: path.basename(p), path: p }));
-        const dockerProjects = dockerPaths.map((p: string) => ({ project: path.basename(p), path: p }));
+        const antProjects: Project[] = antPaths.map((p) => ({ project: path.basename(p), path: p }));
+        const dockerProjects: Project[] = dockerPaths.map((p) => ({ project: path.basename(p), path: p }));
 
         const antTreeItem = new StartTreeItem('Start with Ant', antProjects, 'ant', vscode.TreeItemCollapsibleState.Expanded, this.startService);
         const dockerComposeTreeItem = new StartTreeItem('Start with Docker Compose', dockerProjects, 'dockerCompose', vscode.TreeItemCollapsibleState.Expanded, this.startService);
@@ -42,18 +48,18 @@ class StartTreeProvider {
         this.startTreeItems = [antTreeItem, dockerComposeTreeItem];
     }
 
-    getTreeItem(item: any) {
+    getTreeItem(item: vscode.TreeItem): vscode.TreeItem {
         return item;
     }
 
-    getChildren(element: any) {
+    getChildren(element?: StartTreeItem | ProjectTreeItem): (StartTreeItem | ProjectTreeItem)[] {
         if (!element) {
             return this.startTreeItems;
         }
 
         if (element instanceof StartTreeItem) {
             return element.projects.map(
-                (p: any) => new ProjectTreeItem(p.project, p.path, element.method, this.startService)
+                (p) => new ProjectTreeItem(p.project, p.path, element.method, this.startService)
             );
         }
 
@@ -62,11 +68,11 @@ class StartTreeProvider {
 }
 
 class StartTreeItem extends vscode.TreeItem {
-    projects: any[];
-    method: any;
-    startService: any;
+    projects: Project[];
+    method: string;
+    startService: StartService;
 
-    constructor(label: any, projects: any[], method: any, collapsibleState: any, startService: any) {
+    constructor(label: string, projects: Project[], method: string, collapsibleState: vscode.TreeItemCollapsibleState, startService: StartService) {
         super(label, collapsibleState);
         this.projects = projects;
         this.method = method;
@@ -76,11 +82,11 @@ class StartTreeItem extends vscode.TreeItem {
 }
 
 class ProjectTreeItem extends vscode.TreeItem {
-    path: any;
-    method: any;
-    startService: any;
+    path: string;
+    method: string;
+    startService: StartService;
 
-    constructor(project: any, projectPath: any, method: any, startService: any) {
+    constructor(project: string, projectPath: string, method: string, startService: StartService) {
         super(project);
         this.path = projectPath;
         this.method = method;

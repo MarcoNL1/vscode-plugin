@@ -66,7 +66,7 @@ class FlowViewProvider {
             const svg = await frankLayout.mermaid2svg(mermaid.principalResult);
             this.webView.webview.html = getWebviewContent(svg, css, codiconCss, script, zoomScript);
         }
-        catch (err) {
+        catch {
             this.webView.webview.html = getErrorWebviewContent("This file is not recognized as a Frank!Configuration");
         }
     }

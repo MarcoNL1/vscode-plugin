@@ -124,7 +124,6 @@ class StartService {
         return null;
     }
 
-    // Used by extension.ts for the tree view description label (Ant project from active editor).
     async getWorkingDirectory(): Promise<string | null> {
         return this.getAntWorkingDirectory();
     }

@@ -5,21 +5,35 @@ import { exec } from "child_process";
 import * as he from 'he';
 import format from 'xml-formatter';
 
+export interface Snippet {
+    prefix: string;
+    body: string;
+    description: string;
+}
+
+export type UserSnippets = Record<string, Snippet[]>;
+
+export interface SnippetsRefreshable {
+    rebuild(): void;
+    refresh(): void;
+}
+
 class SnippetsService {
-    context: any;
-    constructor(context: any) {
+    context: vscode.ExtensionContext;
+
+    constructor(context: vscode.ExtensionContext) {
         this.context = context;
     }
 
-    getUserSnippetsPath() {
+    getUserSnippetsPath(): string {
         return path.join(this.context.globalStorageUri.fsPath,'../../snippets/usersnippets.code-snippets');
     }
 
-    getFrameworkSnippetsPath() {
+    getFrameworkSnippetsPath(): string {
         return path.join(this.context.globalStorageUri.fsPath,'../../snippets/frankframework.code-snippets');
     }
 
-    ensureSnippetsFilesExists() {
+    ensureSnippetsFilesExists(): void {
         const storagePaths = [];
         storagePaths.push(this.getUserSnippetsPath());
         storagePaths.push(this.getFrameworkSnippetsPath());
@@ -37,7 +51,7 @@ class SnippetsService {
         });
     }
 
-    getUserSnippets() {
+    getUserSnippets(): UserSnippets {
         const userSnippetsStoragePath =  this.getUserSnippetsPath();
 
         try {
@@ -50,17 +64,17 @@ class SnippetsService {
         }
     }
 
-    setUserSnippets(userSnippets: any) {
+    setUserSnippets(userSnippets: UserSnippets): void {
         const userSnippetsStoragePath =  this.getUserSnippetsPath();
 
         try {
             fs.writeFileSync(userSnippetsStoragePath, JSON.stringify(userSnippets, null, 4), 'utf8');
         } catch (err) {
-            console.log(err);
+            console.error(err);
         }
     }
 
-    getFrameworkSnippets() {
+    getFrameworkSnippets(): UserSnippets {
         const frameworkSnippetsStoragePath = this.getFrameworkSnippetsPath();
 
         try {
@@ -73,16 +87,16 @@ class SnippetsService {
         }
     }
 
-    async addNewUserSnippet(userSnippetsTreeProvider: any) {
+    async addNewUserSnippet(provider: SnippetsRefreshable): Promise<void> {
         const editor = vscode.window.activeTextEditor;
-    
+
         if (!editor) {
             return;
         }
-    
+
         const selection = editor.selection;
         const body = editor.document.getText(selection);
-    
+
         const category = await vscode.window.showInputBox({
             placeHolder: 'Give a name for the category of your new snippet.',
             prompt: "Category is required",
@@ -93,11 +107,11 @@ class SnippetsService {
                 return null;
             }
         });
-    
+
         if (!category) {
             return;
         }
-    
+
         try {
             const userSnippets = this.getUserSnippets();
 
@@ -106,8 +120,8 @@ class SnippetsService {
             if (snippetsByCategory === undefined) {
                 snippetsByCategory = [];
             }
-    
-            const newSnippetBody = {
+
+            const newSnippetBody: Snippet = {
                 "prefix": category,
                 "body": body,
                 "description": category
@@ -115,17 +129,17 @@ class SnippetsService {
 
             snippetsByCategory.push(newSnippetBody);
             userSnippets[category] = snippetsByCategory;
-    
+
             this.setUserSnippets(userSnippets);
 
-            userSnippetsTreeProvider.rebuild();
-            userSnippetsTreeProvider.refresh();
+            provider.rebuild();
+            provider.refresh();
         } catch (err) {
-            console.log(err);
+            console.error(err);
         }
     }
 
-    deleteUserSnippet(category: any, snippetIndex: any) {
+    deleteUserSnippet(category: string, snippetIndex: number): void {
         try {
             const userSnippets = this.getUserSnippets();
 
@@ -133,11 +147,11 @@ class SnippetsService {
 
             this.setUserSnippets(userSnippets);
         } catch (err) {
-            console.log(err);
+            console.error(err);
         }
     }
 
-    deleteAllUserSnippetByCategory(category: any) {
+    deleteAllUserSnippetByCategory(category: string): void {
         try {
             const userSnippets = this.getUserSnippets();
 
@@ -145,11 +159,11 @@ class SnippetsService {
 
             this.setUserSnippets(userSnippets);
         } catch (err) {
-            console.log(err);
+            console.error(err);
         }
     }
 
-    changeCategoryOfUserSnippets(oldCategory: any, category: any) {
+    changeCategoryOfUserSnippets(oldCategory: string, category: string): void {
         const userSnippets = this.getUserSnippets();
 
         if (Object.keys(userSnippets).includes(category)) {
@@ -165,12 +179,12 @@ class SnippetsService {
 
                 this.setUserSnippets(userSnippets);
             } catch (err) {
-                console.log(err);
+                console.error(err);
             }
         }
     }
 
-    async addNewCategoryOfUserSnippets(userSnippetsTreeProvider: any) {
+    async addNewCategoryOfUserSnippets(provider: SnippetsRefreshable): Promise<void> {
         const userSnippets = this.getUserSnippets();
 
         const category = await vscode.window.showInputBox({
@@ -183,7 +197,7 @@ class SnippetsService {
                 return null;
             }
         });
-    
+
         if (!category) {
             return;
         }
@@ -192,11 +206,11 @@ class SnippetsService {
 
         this.setUserSnippets(userSnippets);
 
-        userSnippetsTreeProvider.rebuild();
-        userSnippetsTreeProvider.refresh();
+        provider.rebuild();
+        provider.refresh();
     }
 
-    async uploadUserSnippet(category: any) {    
+    async uploadUserSnippet(category: string): Promise<void> {
         const storagePath = this.context.globalStorageUri.fsPath;
         const targetDir = path.join(storagePath, "frankframework.wiki");
         const targetPath = path.join(targetDir, `${category}.md`)
@@ -206,11 +220,11 @@ class SnippetsService {
                 exec(`git clean -fd`, { cwd: targetDir}, (err) => {
                     exec(`git pull`, { cwd: targetDir }, async (err) => {
                         if (err) {
-                            console.log(err);
+                            console.error(err);
                             vscode.window.showErrorMessage("error");
                             return;
                         }
-                
+
                         const newFileText = "Replace all text in this file with your content.\n\nPlease make sure you use the right format:\n````xml\n<example/>\n\t<example>\n</example>\n```\n\nSave to add this file as a page to the Frank!Framework Wiki.";
 
                         if (!fs.existsSync(targetPath)) {
@@ -219,12 +233,12 @@ class SnippetsService {
                                 'Yes',
                                 'Cancel'
                             );
-                            
+
                             if (choice === 'Yes') {
                                 try {
                                     fs.writeFileSync(targetPath, newFileText, "utf8");
                                 } catch (err) {
-                                    console.log(err);
+                                    console.error(err);
                                 }
                             } else {
                                 return;
@@ -243,13 +257,13 @@ class SnippetsService {
                                     }
                                     exec(`git commit -m "Updated ${category}.md"`, { cwd: targetDir }, (err) => {
                                         if (err) {
-                                            console.log(err);
+                                            console.error(err);
                                             vscode.window.showErrorMessage("error");
                                             return;
                                         }
                                         exec(`git push`, { cwd: targetDir }, (err) => {
                                             if (err) {
-                                                console.log(err);
+                                                console.error(err);
                                                 vscode.window.showErrorMessage("error");
                                                 return;
                                             }
@@ -265,13 +279,13 @@ class SnippetsService {
                     });
                 });
             });
-            
+
         } catch (err) {
-            console.log(err);
+            console.error(err);
         }
     }
 
-    prettifyXml(xml: any) {
+    prettifyXml(xml: string): string {
         try {
             return format(xml, {
                 indentation: '    ',
@@ -281,9 +295,9 @@ class SnippetsService {
         } catch {
             return xml;
         }
-    };
+    }
 
-    extractSnippets(targetDir: any) {
+    extractSnippets(targetDir: string): void {
         const snippetsStoragePath =  path.join(this.context.globalStorageUri.fsPath, '../../snippets/frankframework.code-snippets');
 
         const regex = new RegExp(
@@ -293,16 +307,16 @@ class SnippetsService {
         'gm'
         );
 
-        const snippets: Record<string, any> = {}
-        
+        const snippets: UserSnippets = {};
+
         try {
             const files = fs.readdirSync(targetDir);
 
             for (const file of files) {
                 const filePath = path.join(targetDir, file);
                 const category = file.replace(/.md|.asciidoc/g, "");
-                const snippetsPerFile = [];
-                
+                const snippetsPerFile: Snippet[] = [];
+
                 try {
                     const content = fs.readFileSync(filePath, 'utf8');
                     const matches = content.matchAll(regex);
@@ -312,30 +326,30 @@ class SnippetsService {
 
                         if (xmlBlock) {
                             const decodedBody = he.decode(xmlBlock.trim()).replace("<pre>", "").replace("</pre>", "");
-                
+
                             const prettyBody = this.prettifyXml(decodedBody);
 
-                            const snippet = {
+                            const snippet: Snippet = {
                                 "prefix": category,
                                 "body": prettyBody,
                                 "description": category
-                            }
+                            };
 
-                            snippetsPerFile.push(snippet)
+                            snippetsPerFile.push(snippet);
                         }
                     }
                     snippets[category] = snippetsPerFile;
                 } catch (err) {
-                    console.log(err);
+                    console.error(err);
                 }
-            } 
+            }
             fs.writeFileSync(snippetsStoragePath, JSON.stringify(snippets, null, 4), 'utf8');
         } catch (err) {
-            console.log(err);
+            console.error(err);
         }
     }
 
-    loadFrankFrameworkSnippets() {
+    loadFrankFrameworkSnippets(): void {
         const storagePath = this.context.globalStorageUri.fsPath;
         fs.mkdirSync(storagePath, { recursive: true });
 
@@ -346,12 +360,12 @@ class SnippetsService {
 
         exec(`git clone "${repoUrl}" "${targetDir}"`, { cwd: storagePath }, (err) => {
             if (err) {
-                console.log(err);
+                console.error(err);
             }
 
             this.extractSnippets(targetDir);
         });
-    };
+    }
 }
 
 export default SnippetsService;

@@ -23,7 +23,7 @@ let projectNameTrimmed = "skeleton";
 let configNameTrimmed = "";
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('Activating WeAreFrank! Extension...');
+
 
     const config = vscode.workspace.getConfiguration('frank');
 
@@ -103,12 +103,10 @@ export async function activate(context: vscode.ExtensionContext) {
         );
     }
 
-    // Init start view
     const startTreeView = vscode.window.createTreeView("startTreeView", {
         treeDataProvider: startTreeProvider
     });
 
-    // Init snippets view
     if (config.get('enableSnippets')) {
         vscode.window.createTreeView("snippetsTreeView", {
             treeDataProvider: snippetsTreeProvider,
@@ -350,7 +348,6 @@ export async function activate(context: vscode.ExtensionContext) {
         }));
     }
 
-    // Execute Startup Actions
     setStartTreeViewDescription();
     if (config.get('enableSnippets')) {
         snippetsService.ensureSnippetsFilesExists();

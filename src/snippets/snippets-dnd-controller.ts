@@ -1,13 +1,15 @@
 import * as vscode from 'vscode';
+import SnippetsService from './snippets-service';
+import { SnippetsTreeProvider, SnippetTreeItem, CategoryTreeItem } from './snippets-tree-provider';
 
 class SnippetsDndController {
-  context: any;
-  snippetsTreeProvider: any;
-  snippetsService: any;
+  context: vscode.ExtensionContext;
+  snippetsTreeProvider: SnippetsTreeProvider;
+  snippetsService: SnippetsService;
   dragMimeTypes: string[];
   dropMimeTypes: string[];
 
-  constructor(context: any, snippetsTreeProvider: any, snippetsService: any) {
+  constructor(context: vscode.ExtensionContext, snippetsTreeProvider: SnippetsTreeProvider, snippetsService: SnippetsService) {
     this.context = context;
     this.snippetsTreeProvider = snippetsTreeProvider;
     this.snippetsService = snippetsService;
@@ -15,12 +17,12 @@ class SnippetsDndController {
     this.dropMimeTypes = ["application/vnd.code.tree.snippetsTreeview"];
   }
 
-  async handleDrag(sourceItems: any, dataTransfer: any, token: any) {
+  async handleDrag(sourceItems: SnippetTreeItem[], dataTransfer: vscode.DataTransfer, _token: vscode.CancellationToken): Promise<void> {
     const draggableItems = sourceItems.filter(
-      (item: any) => item.contextValue === "snippetTreeItem-user"
+      (item) => item.contextValue === "snippetTreeItem-user"
     );
 
-    const payload = draggableItems.map((item: any) => ({
+    const payload = draggableItems.map((item) => ({
       index: item.index,
       parent: item.category,
       contextValue: item.contextValue
@@ -32,30 +34,32 @@ class SnippetsDndController {
     );
   }
 
-  async handleDrop(target: any, dataTransfer: any, token: any) {
+  async handleDrop(target: CategoryTreeItem | undefined, dataTransfer: vscode.DataTransfer, _token: vscode.CancellationToken): Promise<void> {
     const dataItem = dataTransfer.get("application/vnd.code.tree.snippetsTreeview");
-    
-    const payload = JSON.parse(dataItem.value); 
+
+    if (!dataItem) return;
+
+    const payload: Array<{ index: number; parent: string; contextValue: string }> = JSON.parse(dataItem.value);
 
     if (target?.contextValue === "categoryTreeItem-user") {
-      let targetParent = target.label;
+      const targetParent = target.label as string;
 
-      payload.forEach((snippetTreeItem: any) =>  {
-        let userSnippets = this.snippetsService.getUserSnippets();
+      payload.forEach((snippetTreeItem) => {
+        const userSnippets = this.snippetsService.getUserSnippets();
 
-        let oldParent = snippetTreeItem.parent;
-        let snippet = userSnippets[oldParent][snippetTreeItem.index];
+        const oldParent = snippetTreeItem.parent;
+        const snippet = userSnippets[oldParent][snippetTreeItem.index];
 
         try {
           this.snippetsService.deleteUserSnippet(oldParent, snippetTreeItem.index);
 
-          userSnippets = this.snippetsService.getUserSnippets();
-        
-          userSnippets[targetParent].push(snippet);
+          const updated = this.snippetsService.getUserSnippets();
 
-          this.snippetsService.setUserSnippets(userSnippets);
+          updated[targetParent].push(snippet);
+
+          this.snippetsService.setUserSnippets(updated);
         } catch (err) {
-            console.error(err);
+          console.error(err);
         }
       });
     }
@@ -64,7 +68,7 @@ class SnippetsDndController {
     this.snippetsTreeProvider.refresh();
   }
 
-  dispose() {}
+  dispose(): void {}
 }
 
 export { SnippetsDndController };
