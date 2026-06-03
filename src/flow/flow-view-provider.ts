@@ -382,7 +382,8 @@ function revealMatch(editor: vscode.TextEditor, match: RegExpExecArray, preserve
 async function findPipeInIncludes(
   text: string,
   dir: string,
-  pipeName: string
+  pipeName: string,
+  visited: Set<string> = new Set()
 ): Promise<{ uri: vscode.Uri; match: RegExpExecArray } | null> {
   const withoutComments = text.replace(/<!--[\s\S]*?-->/g, '');
   const includeMatches = [...withoutComments.matchAll(/<Include\s+ref=["']([^"']+)["']\s*(?:\/>|><\/Include>)/gi)];
@@ -390,12 +391,21 @@ async function findPipeInIncludes(
     const relativePath = inc[1];
     try {
       const uri = vscode.Uri.file(path.join(dir, relativePath));
+      const key = uri.fsPath;
+      if (visited.has(key)) { continue; }
+      visited.add(key);
+
       const fileData = await vscode.workspace.fs.readFile(uri);
       const includeText = Buffer.from(fileData).toString('utf8');
+
       const match = findPipeInDocument(includeText, pipeName);
       if (match) {
         return { uri, match };
       }
+
+      // Recurse into this file's own includes
+      const nested = await findPipeInIncludes(includeText, path.dirname(uri.fsPath), pipeName, visited);
+      if (nested) { return nested; }
     } catch {
       // unreadable include — skip
     }
