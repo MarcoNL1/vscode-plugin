@@ -1,0 +1,62 @@
+name: Release
+
+# Triggered by version tags (e.g. v1.0.1). To release, use npm version to bump
+# package.json and create the tag in one step, then push the tag:
+#   npm version 1.x.x
+#   git push origin --tags
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build, test & publish
+    runs-on: ubuntu-latest
+
+    # Required to create a GitHub Release from the workflow.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Compile
+        run: npm run compile
+
+      # The test suite launches a real VS Code instance, which requires a display.
+      # xvfb-run provides a virtual framebuffer on headless Linux CI machines.
+      - name: Run tests
+        run: xvfb-run -a npm test
+
+      - name: Package extension (.vsix)
+        run: npx --yes @vscode/vsce package
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.vsix'
+          generate_release_notes: true
+
+      # Marketplace publishing is disabled by default. To enable, create and set the repository
+      # variable PUBLISH_MARKETPLACE to 'true' and add the VSCE_PAT secret
+      # (Settings > Secrets and variables > Actions).
+      - name: Publish to VS Code Marketplace
+        if: vars.PUBLISH_MARKETPLACE == 'true'
+        run: npx --yes @vscode/vsce publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
