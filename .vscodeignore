@@ -3,7 +3,6 @@
 .github/**
 src/**
 frank-runner/**
-node_modules/**
 test/**
 .gitignore
 .yarnrc
